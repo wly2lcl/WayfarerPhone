@@ -1,0 +1,8 @@
+name: contracts
+description: Wayfarer 契约模型 —— 字段唯一权威来源（docs/数据契约.md）
+version: 0.1.0
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.9.0

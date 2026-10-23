@@ -1,0 +1,130 @@
+import 'package:engine/engine.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../core/ui/paper.dart';
+import 'worlds_provider.dart';
+
+/// 世界库（书架）：列出 engine.listWorlds()
+class WorldsPage extends ConsumerWidget {
+  const WorldsPage({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final worlds = ref.watch(worldsProvider);
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('书架'),
+        actions: <Widget>[
+          IconButton(
+            icon: const Icon(Icons.local_library_outlined),
+            tooltip: '我的局',
+            onPressed: () => context.push('/library'),
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: '设置',
+            onPressed: () => context.push('/settings'),
+          ),
+        ],
+      ),
+      body: worlds.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, st) => _LoadError(message: '$e', onRetry: () => ref.invalidate(worldsProvider)),
+        data: (list) => RefreshIndicator(
+          onRefresh: () => ref.refresh(worldsProvider.future),
+          child: ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+            itemCount: list.length,
+            itemBuilder: (context, i) => Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: _WorldCard(world: list[i]),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _WorldCard extends StatelessWidget {
+  const _WorldCard({required this.world});
+
+  final WorldSummary world;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final sub = theme.colorScheme.secondary;
+    return PaperCard(
+      onTap: () => context.push('/world/${world.id}'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: Text(
+                  world.title,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                ),
+              ),
+              PaperBadge(label: genreLabel(world.genre)),
+            ],
+          ),
+          if (world.summary.isNotEmpty) ...<Widget>[
+            const SizedBox(height: 8),
+            Text(
+              world.summary,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 13, height: 1.6, color: sub),
+            ),
+          ],
+          const SizedBox(height: 14),
+          Row(
+            children: <Widget>[
+              Text(
+                '版本 v${world.version} · ${world.identityCount} 种身份',
+                style: TextStyle(fontSize: 12, color: sub),
+              ),
+              const Spacer(),
+              if (world.source == 'builtin') const PaperBadge(label: '内置'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LoadError extends StatelessWidget {
+  const _LoadError({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final sub = Theme.of(context).colorScheme.secondary;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            const Text('载入失败'),
+            const SizedBox(height: 8),
+            Text(message,
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12, color: sub)),
+            const SizedBox(height: 16),
+            OutlinedButton(onPressed: onRetry, child: const Text('重试')),
+          ],
+        ),
+      ),
+    );
+  }
+}

@@ -1,0 +1,186 @@
+import 'dart:io';
+
+import 'package:drift/drift.dart';
+import 'package:drift/native.dart';
+
+part 'app_db.g.dart';
+
+class Worlds extends Table {
+  TextColumn get id => text()();
+  TextColumn get title => text()();
+  TextColumn get genre => text()();
+  TextColumn get summary => text().nullable()();
+  TextColumn get source => text()();
+  BoolColumn get exportable => boolean().clientDefault(() => true)();
+  TextColumn get license => text().clientDefault(() => 'all-rights-reserved')();
+  TextColumn get author => text().nullable()();
+  TextColumn get sourceWorldId => text().nullable()();
+  IntColumn get latestVersion => integer().clientDefault(() => 0)();
+  IntColumn get createdAt => integer()();
+  IntColumn get updatedAt => integer()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@TableIndex(name: 'idx_wv_world_version', columns: {#worldId, #version}, unique: true)
+class WorldVersions extends Table {
+  TextColumn get id => text()();
+  TextColumn get worldId => text()();
+  IntColumn get version => integer()();
+  TextColumn get bible => text()();
+  TextColumn get identities => text()();
+  TextColumn get seeds => text()();
+  TextColumn get checksum => text()();
+  IntColumn get createdAt => integer()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@TableIndex(name: 'idx_runs_world', columns: {#worldId, #status, #updatedAt})
+class Runs extends Table {
+  TextColumn get id => text()();
+  TextColumn get worldId => text()();
+  IntColumn get worldVersion => integer()();
+  TextColumn get identityId => text()();
+  TextColumn get status => text().clientDefault(() => 'active')();
+  IntColumn get chapter => integer().clientDefault(() => 1)();
+  IntColumn get turnNo => integer().clientDefault(() => 0)();
+  TextColumn get headSnapshotId => text().nullable()();
+  TextColumn get endingId => text().nullable()();
+  IntColumn get createdAt => integer()();
+  IntColumn get updatedAt => integer()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@TableIndex(name: 'idx_snapshots_run', columns: {#runId, #turnNo})
+class RunSnapshots extends Table {
+  TextColumn get id => text()();
+  TextColumn get runId => text()();
+  IntColumn get turnNo => integer()();
+  IntColumn get chapter => integer()();
+  TextColumn get parentSnapshotId => text().nullable()();
+  TextColumn get parentRunId => text().nullable()();
+  TextColumn get state => text()();
+  TextColumn get memory => text().nullable()();
+  IntColumn get createdAt => integer()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@TableIndex(name: 'idx_events_run_turn', columns: {#runId, #turnNo})
+class RunEvents extends Table {
+  TextColumn get runId => text()();
+  IntColumn get seq => integer()();
+  IntColumn get turnNo => integer()();
+  TextColumn get type => text()();
+  TextColumn get payload => text()();
+  IntColumn get createdAt => integer()();
+
+  @override
+  Set<Column> get primaryKey => {runId, seq};
+}
+
+class UsageLog extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get runId => text().nullable()();
+  IntColumn get turnNo => integer().nullable()();
+  TextColumn get role => text()();
+  TextColumn get model => text()();
+  IntColumn get tokensIn => integer()();
+  IntColumn get tokensOut => integer()();
+  BoolColumn get estimated => boolean().clientDefault(() => false)();
+  IntColumn get ms => integer()();
+  BoolColumn get ok => boolean().clientDefault(() => true)();
+  IntColumn get createdAt => integer()();
+}
+
+class ImportJobs extends Table {
+  TextColumn get id => text()();
+  TextColumn get sourcePath => text()();
+  TextColumn get contentHash => text()();
+  TextColumn get stage => text()();
+  RealColumn get progress => real().clientDefault(() => 0)();
+  TextColumn get error => text().nullable()();
+  IntColumn get createdAt => integer()();
+  IntColumn get updatedAt => integer()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+class AppSettings extends Table {
+  TextColumn get key => text()();
+  TextColumn get value => text()();
+
+  @override
+  Set<Column> get primaryKey => {key};
+}
+
+@TableIndex(name: 'idx_local_events_name', columns: {#name, #createdAt})
+class LocalEvents extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text()();
+  TextColumn get runId => text().nullable()();
+  TextColumn get props => text().nullable()();
+  IntColumn get createdAt => integer()();
+}
+
+@DriftDatabase(tables: [
+  Worlds,
+  WorldVersions,
+  Runs,
+  RunSnapshots,
+  RunEvents,
+  UsageLog,
+  ImportJobs,
+  AppSettings,
+  LocalEvents,
+])
+class AppDb extends _$AppDb {
+  AppDb(super.e);
+
+  @override
+  int get schemaVersion => 1;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) async {
+          await m.createAll();
+          await createFts(customStatement);
+        },
+        beforeOpen: (details) async {
+          // FTS 表在 v1 与低版本重建时兜底创建
+          final hasFts = await customSelect(
+            "SELECT count(*) AS c FROM sqlite_master WHERE type='table' AND name='events_fts'",
+            readsFrom: {},
+          ).getSingle();
+          if (hasFts.read<int>('c') == 0) {
+            await createFts(customStatement);
+          }
+        },
+      );
+
+  // trigram：unicode61 会把整句无空格中文当成单个 token，检索形同虚设；
+  // trigram 支持子串 MATCH（查询需 ≥3 字符）
+  static const ftsDdl =
+      "CREATE VIRTUAL TABLE IF NOT EXISTS events_fts USING fts5("
+      "run_id UNINDEXED, turn_no UNINDEXED, text, tokenize = 'trigram')";
+
+  static Future<void> createFts(Future<void> Function(String) exec) =>
+      exec(ftsDdl);
+}
+
+AppDb openDbAt(String path) {
+  return AppDb(LazyDatabase(() async {
+    final file = File(path);
+    await file.parent.create(recursive: true);
+    return NativeDatabase.createInBackground(file);
+  }));
+}
+
+AppDb openDbInMemory() => AppDb(NativeDatabase.memory());

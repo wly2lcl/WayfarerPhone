@@ -1,0 +1,199 @@
+[
+  {
+    "id": "id_ext_servant",
+    "name": "外门杂役",
+    "rarity": "common",
+    "difficulty": 1,
+    "situation": "灵根残缺，被分去挑水，怀里藏着一枚来路不明的玉简，没人替你说话。",
+    "goal": "弄清玉简的来历，在外门活过下一次清退。",
+    "shackles": ["灵根残缺，无法正常引气", "杂役月例被执事层层克扣"],
+    "resources": { "spiritStones": 12 },
+    "relations": [
+      { "npcId": "npc_shen_yan", "affinity": -15, "note": "克扣你月例最多的执事" },
+      { "npcId": "npc_su_wan", "affinity": 20, "note": "在药庐替你讨过一次药" }
+    ],
+    "start": {
+      "regionId": "reg_qixia",
+      "placeId": "place_qixia_outer_gate",
+      "gameTime": "317-03-07",
+      "age": 16
+    }
+  },
+  {
+    "id": "id_herb_apprentice",
+    "name": "药庐学徒",
+    "rarity": "common",
+    "difficulty": 1,
+    "situation": "认得三百种药，师父昨夜暴死在药炉旁。官差进不了山门，你是嫌疑人。",
+    "goal": "查出师父的死因，洗掉自己身上的嫌疑。",
+    "shackles": ["被宗门列为嫌疑人，不得离山"],
+    "resources": { "spiritStones": 15, "pills": { "回春散": 2 } },
+    "relations": [
+      { "npcId": "npc_su_wan", "affinity": 25, "note": "同在药庐，她教过你辨药" }
+    ],
+    "start": {
+      "regionId": "reg_qixia",
+      "placeId": "place_qixia_herbal",
+      "gameTime": "317-03-06",
+      "age": 17
+    }
+  },
+  {
+    "id": "id_escort_outcast",
+    "name": "镖局弃徒",
+    "rarity": "common",
+    "difficulty": 2,
+    "situation": "师父的仇家在找你，你还欠着三十两银子，进城得把刀裹起来。",
+    "goal": "还清三十两银子，查清师父被害的缘由。",
+    "shackles": ["通缉在身，进城需遮掩", "欠债三十两，月月有人来讨"],
+    "resources": { "spiritStones": 22 },
+    "relations": [
+      { "npcId": "npc_lu_xingzhou", "affinity": -10, "note": "欠三合堂的债，他催得最勤" }
+    ],
+    "start": {
+      "regionId": "reg_yunxiu",
+      "placeId": "place_yunxiu_west_market",
+      "gameTime": "317-03-07",
+      "age": 19
+    }
+  },
+  {
+    "id": "id_clan_bastard",
+    "name": "世家庶子",
+    "rarity": "common",
+    "difficulty": 2,
+    "situation": "无灵根，族里把你当联姻筹码，婚期定在秋后，你没有说不的权利。",
+    "goal": "拿回属于自己的那一份家产，然后离开。",
+    "shackles": ["无修为，家中随时可牺牲你", "婚书已下，悔婚即逐出族谱"],
+    "resources": { "spiritStones": 40 },
+    "relations": [
+      { "npcId": "npc_lu_xingzhou", "affinity": 10, "note": "家里的生意上打过交道" }
+    ],
+    "start": {
+      "regionId": "reg_yunxiu",
+      "placeId": "place_yunxiu_west_market",
+      "gameTime": "317-03-07",
+      "age": 18
+    }
+  },
+  {
+    "id": "id_rogue_cultivator",
+    "name": "散修游侠",
+    "rarity": "rare",
+    "difficulty": 2,
+    "situation": "无门无派，背上挂着一桩十年前的血案名声，灵石见底，刀不能生锈。",
+    "goal": "查清当年灭门的真相，让名字底下对得起人。",
+    "shackles": ["无宗门庇护，出事没人收尸", "灵石见底，丹药买不起"],
+    "resources": { "spiritStones": 18, "pills": { "回春散": 2 } },
+    "relations": [
+      { "npcId": "npc_a_ruo", "affinity": 20, "note": "在城隍庙背靠背过过一夜" },
+      { "npcId": "npc_lu_xingzhou", "affinity": -20, "note": "他知道你的通缉画像值几个钱" }
+    ],
+    "start": {
+      "regionId": "reg_heishui",
+      "placeId": "place_heishui_market",
+      "gameTime": "317-03-05",
+      "age": 26
+    }
+  },
+  {
+    "id": "id_demonic_disciple",
+    "name": "魔道弃徒",
+    "rarity": "rare",
+    "difficulty": 3,
+    "situation": "功法反噬，被玄阴教追杀，改名换姓藏在云岫城，每月得吃抑丹压毒。",
+    "goal": "压制反噬，查清当初把你当炉鼎的人。",
+    "shackles": ["每月需服抑丹，否则心魔滋生", "玄阴教的追杀令没有期限"],
+    "resources": { "spiritStones": 20, "pills": { "抑丹": 6 } },
+    "relations": [
+      { "npcId": "npc_bai_wujiu", "affinity": -30, "note": "追杀你的执事，见过他杀人" },
+      { "npcId": "npc_lu_xingzhou", "affinity": 5, "note": "他收钱替你压下过一次行踪" }
+    ],
+    "start": {
+      "regionId": "reg_yunxiu",
+      "placeId": "place_yunxiu_ghost_market",
+      "gameTime": "317-03-04",
+      "age": 22
+    }
+  },
+  {
+    "id": "id_court_spy",
+    "name": "缇骑暗桩",
+    "rarity": "rare",
+    "difficulty": 3,
+    "situation": "表面是账房先生，实为缇骑密探，两条线都攥着你的命。",
+    "goal": "查清灵脉枯竭的真正原因，换一个脱身的机会。",
+    "shackles": ["身份一旦暴露，两边都要你死", "每月初一须递密报，逾期即除名"],
+    "resources": { "spiritStones": 45 },
+    "relations": [
+      { "npcId": "npc_pei_ji", "affinity": 10, "note": "单线联络的上官，不苟言笑" },
+      { "npcId": "npc_lu_xingzhou", "affinity": -5, "note": "他察觉有人长期在买消息，还没查到你头上" }
+    ],
+    "start": {
+      "regionId": "reg_yunxiu",
+      "placeId": "place_yunxiu_west_market",
+      "gameTime": "317-03-07",
+      "age": 28
+    }
+  },
+  {
+    "id": "id_inner_disciple",
+    "name": "青莲内门弟子",
+    "rarity": "rare",
+    "difficulty": 2,
+    "situation": "天赋出众，却被师叔忌惮，要紧的功法差着后三卷，处处受压。",
+    "goal": "在宗门站稳脚跟，把被扣下的功法拿回来。",
+    "shackles": ["师叔掌握你的把柄", "内门站错队的人，下场均不明"],
+    "resources": { "spiritStones": 50, "pills": { "聚气丹": 4 } },
+    "relations": [
+      { "npcId": "npc_shen_yan", "affinity": -20, "note": "师叔一系的人，月例总卡你的" },
+      { "npcId": "npc_su_wan", "affinity": 15, "note": "受伤时她替你包扎过" }
+    ],
+    "start": {
+      "regionId": "reg_qixia",
+      "placeId": "place_qixia_main_peak",
+      "gameTime": "317-03-07",
+      "age": 21
+    }
+  },
+  {
+    "id": "id_furnace_spirit",
+    "name": "丹炉器灵转世",
+    "rarity": "unique",
+    "difficulty": 3,
+    "situation": "记忆残缺，记得自己曾是一尊丹炉，梦里总闻到一种烧焦的甜味。",
+    "goal": "找回前世的记忆与炉身，弄清自己为何成人。",
+    "shackles": ["记忆每次恢复都会引来天罚", "灵气入体时经脉如遭火燎"],
+    "resources": { "spiritStones": 25, "pills": { "定神丹": 3 } },
+    "relations": [
+      { "npcId": "npc_su_wan", "affinity": 30, "note": "靠近她时，梦会安静片刻" },
+      { "npcId": "npc_yun_zhongjun", "affinity": 0, "note": "说不清缘由，闭关殿的方向让你心悸" }
+    ],
+    "start": {
+      "regionId": "reg_yunxiu",
+      "placeId": "place_yunxiu_herbal",
+      "gameTime": "317-03-06",
+      "age": 15
+    }
+  },
+  {
+    "id": "id_ruins_survivor",
+    "name": "归墟幸存者",
+    "rarity": "unique",
+    "difficulty": 3,
+    "situation": "三年前从归墟爬出来，没人信你看见了什么，旧伤在阴雨天发作。",
+    "goal": "证明归墟里还有活物，让死在里面的人死得明白。",
+    "shackles": ["身上有无法解释的旧伤与梦魇", "提起归墟被视为疯癫"],
+    "resources": { "spiritStones": 30, "pills": { "定神丹": 2 } },
+    "relations": [
+      { "npcId": "npc_a_ruo", "affinity": 35, "note": "你答应过他祖父，照看他" },
+      { "npcId": "npc_bai_wujiu", "affinity": -25, "note": "他知道你是从哪里爬回来的人" }
+    ],
+    "start": {
+      "regionId": "reg_heishui",
+      "placeId": "place_heishui_market",
+      "gameTime": "317-03-05",
+      "age": 32
+    }
+  }
+]

@@ -1,0 +1,199 @@
+[
+  {
+    "id": "ev_grand_contest",
+    "title": "外门大比",
+    "kind": "conflict",
+    "summary": "外门三年一度的大比，赢了进内门名录，输了继续挑水。执事沈砚借大比相看弟子，榜下藏着交易。",
+    "regionId": "reg_qixia",
+    "factionIds": ["fac_qinglian"],
+    "npcIds": ["npc_shen_yan"],
+    "requires": {
+      "chapterMin": 3,
+      "flags": { "identity_sect": "qinglian" }
+    },
+    "effects": {
+      "danger": "medium",
+      "threadId": "t_shen_recruit",
+      "hint": "大比的名次会改变沈砚对主角的处置方式"
+    },
+    "weight": 70,
+    "once": true
+  },
+  {
+    "id": "ev_herb_murder",
+    "title": "药庐命案",
+    "kind": "mystery",
+    "summary": "药王巷药庐的炉火半夜熄了，又有人死在药炉旁。官差进不了巷子，伙计们讳莫如深，而你是最后见过死者的人之一。",
+    "regionId": "reg_yunxiu",
+    "factionIds": [],
+    "npcIds": ["npc_su_wan"],
+    "requires": {
+      "chapterMin": 2,
+      "chapterMax": 12,
+      "placeId": "place_yunxiu_herbal",
+      "flags": { "visited_place_yunxiu_herbal": true }
+    },
+    "effects": {
+      "danger": "medium",
+      "threadId": "t_herb_murder",
+      "hint": "命案背后有人借药庐走灵材私账，或借此嫁祸"
+    },
+    "weight": 60,
+    "once": true
+  },
+  {
+    "id": "ev_vein_drain",
+    "title": "灵脉枯竭",
+    "kind": "disaster",
+    "summary": "主峰灵脉的水位又降了一寸，坊市灵石翻价，有人囤积，有人抢。所有人都感觉到，剩下的时间不多了。",
+    "factionIds": ["fac_qinglian", "fac_tiqi"],
+    "npcIds": ["npc_pei_ji", "npc_yun_zhongjun"],
+    "requires": {
+      "chapterMin": 1
+    },
+    "effects": {
+      "danger": "high",
+      "threadId": "t_vein_truth",
+      "hint": "灵脉枯竭不是天灾，有人在里面做手脚"
+    },
+    "weight": 80,
+    "once": true
+  },
+  {
+    "id": "ev_recruit",
+    "title": "宗门选徒",
+    "kind": "opportunity",
+    "summary": "青莲宗开山门收徒，云岫城西市设了报名的棚子。灵根合格者当场带走，落选者交三枚灵石换一句评语。落选的比入选的多得多。",
+    "regionId": "reg_yunxiu",
+    "factionIds": ["fac_qinglian"],
+    "npcIds": ["npc_shen_yan"],
+    "requires": {
+      "chapterMin": 4,
+      "chapterMax": 8,
+      "flags": { "identity_sectless": true }
+    },
+    "effects": {
+      "danger": "low",
+      "threadId": "t_sect_entry",
+      "hint": "入宗意味着庇护，也意味着名册、管束与站队"
+    },
+    "weight": 65,
+    "once": true
+  },
+  {
+    "id": "ev_blackwater",
+    "title": "秘境开启",
+    "kind": "opportunity",
+    "summary": "黑水泽深处的沉渊秘境雾气散开一角，散修连夜赶去占位置。玄阴教的人守在入口收人头税，进去的人十个里回不来三个。",
+    "regionId": "reg_heishui",
+    "factionIds": ["fac_xuanyin"],
+    "npcIds": ["npc_bai_wujiu"],
+    "requires": {
+      "chapterMin": 2,
+      "chapterMax": 3,
+      "knowledge": ["残图指向黑水泽深处的秘境"]
+    },
+    "effects": {
+      "danger": "high",
+      "threadId": "t_guixu_key",
+      "hint": "秘境深处的东西与残图同源，归墟之钥的线索在此汇拢"
+    },
+    "weight": 55,
+    "once": true
+  },
+  {
+    "id": "ev_warrant",
+    "title": "缇骑缉拿",
+    "kind": "conflict",
+    "summary": "缇骑的缉捕文书贴上了城门，画像画得不算准。他们开始逐户问话，被点名的人要么去衙门自证，要么连夜出城。",
+    "regionId": "reg_yunxiu",
+    "factionIds": ["fac_tiqi"],
+    "npcIds": ["npc_pei_ji", "npc_lu_xingzhou"],
+    "requires": {
+      "chapterMin": 2,
+      "flags": { "wanted": true }
+    },
+    "effects": {
+      "danger": "high",
+      "threadId": "t_warrant",
+      "hint": "缉拿背后是裴绩在顺着名单钓人，三合堂在旁边递名单"
+    },
+    "weight": 50,
+    "once": false
+  },
+  {
+    "id": "ev_uncle_coup",
+    "title": "师叔夺权",
+    "kind": "conflict",
+    "summary": "师叔一系开始清洗内门的人手，名册上被划掉的名字接连调去守矿。宗门没有明说，但所有人都知道，到了站队的时候。",
+    "regionId": "reg_qixia",
+    "factionIds": ["fac_qinglian"],
+    "npcIds": ["npc_shen_yan"],
+    "requires": {
+      "chapterMin": 2,
+      "flags": { "identity_inner_disciple": true }
+    },
+    "effects": {
+      "danger": "medium",
+      "threadId": "t_uncle_leverage",
+      "hint": "师叔手里的把柄会在夺权时拿出来用"
+    },
+    "weight": 60,
+    "once": true
+  },
+  {
+    "id": "ev_heart_demon",
+    "title": "心魔初现",
+    "kind": "mystery",
+    "summary": "夜里打坐，眼前总是那处过不去的旧景。丹药压不住，老修士说这不是病，是心里欠下的东西开始讨债。",
+    "factionIds": [],
+    "npcIds": ["npc_su_wan"],
+    "requires": {
+      "chapterMin": 2,
+      "flags": { "heartDemonMin": 2 }
+    },
+    "effects": {
+      "danger": "medium",
+      "hint": "心魔压不住，只能找化解的因由"
+    },
+    "weight": 45,
+    "once": true
+  },
+  {
+    "id": "ev_ruins_tremor",
+    "title": "归墟异动",
+    "kind": "mystery",
+    "summary": "归墟方向的地脉连震三夜，外环的尸骨堆里渗出黑雾。黑水泽的水位跟着涨，玄阴教的人已经动身，缇骑的斥候也出现在尸原边缘。",
+    "regionId": "reg_guixu",
+    "factionIds": ["fac_xuanyin", "fac_tiqi"],
+    "npcIds": ["npc_bai_wujiu", "npc_a_ruo"],
+    "requires": {
+      "chapterMin": 3
+    },
+    "effects": {
+      "danger": "high",
+      "threadId": "t_guixu_awake",
+      "hint": "归墟里的活物醒了，第二卷从这里开局"
+    },
+    "weight": 50,
+    "once": true
+  },
+  {
+    "id": "ev_oath",
+    "title": "道侣之约",
+    "kind": "encounter",
+    "summary": "有人在你落难时不声不响地留了药，有人陪你走了一段没人敢走的夜路。到了该说清的时候，说了就回不了头。",
+    "factionIds": [],
+    "npcIds": [],
+    "requires": {
+      "chapterMin": 2,
+      "flags": { "anyNpcAffinityGte": 60 }
+    },
+    "effects": {
+      "danger": "low",
+      "hint": "许诺即枷锁，对方说的未必全是真话"
+    },
+    "weight": 40,
+    "once": true
+  }
+]

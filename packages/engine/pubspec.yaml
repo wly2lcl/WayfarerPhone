@@ -1,0 +1,20 @@
+name: engine
+description: Wayfarer 本地引擎 —— 回合、规则、Prompt、模型网关、本地数据层
+version: 0.1.0
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.9.0
+
+dependencies:
+  contracts:
+    path: ../contracts
+  drift: ^2.28.0
+  sqlite3: ^2.7.0
+
+dev_dependencies:
+  build_runner: ^2.4.0
+  drift_dev: ^2.28.0
+  lints: ^6.0.0
+  test: ^1.25.0

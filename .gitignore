@@ -1,0 +1,23 @@
+.dart_tool/
+build/
+.flutter-plugins*
+*.iml
+.idea/
+ephemeral/
+.packages
+pubspec.lock
+
+# signing & secrets
+**/key.properties
+**/*.jks
+**/*.keystore
+tool/live/config.json
+
+# android
+apps/mobile/android/.gradle/
+apps/mobile/android/local.properties
+apps/mobile/android/app/.cxx/
+
+# ios
+apps/mobile/ios/Pods/
+apps/mobile/ios/.symlinks/

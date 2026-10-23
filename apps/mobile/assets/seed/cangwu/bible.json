@@ -1,0 +1,658 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "title": "苍梧",
+    "genre": "xianxia",
+    "tone": "冷峻、克制、少抒情",
+    "pov": "second",
+    "language": "zh-CN",
+    "contentRating": "general",
+    "summary": "灵潮退去三百年，苍梧的灵脉正在枯竭。宗门守着最后的灵脉，朝廷清查修士，散修在夹缝里抢剩下的渣。你带着一件来历不明的东西入局，活下去，或者死在半路。",
+    "volumeHint": "第一卷《立足》共三十三回合：序章身份落地；第一至十回合立足站队；第十一至二十二回合付出第一次真正的代价；第二十三至三十一回合在秘境与宗门清洗之间只走一条；第三十二回合卷末突破筑基判定，成则入第二卷，败则转入残局。"
+  },
+  "eras": [
+    {
+      "id": "era_dying_tide",
+      "name": "灵潮退去",
+      "span": "三百年前至今",
+      "summary": "一夜之间灵气退潮，高阶修士相继坐化，残存灵脉成了各方争夺的命根。旧年的丹方功法还在传，药效一年不如一年。",
+      "turningPoints": [
+        "灵潮一夜退去，上古宗门十不存一",
+        "朝廷设缇骑，收编或清除修士"
+      ]
+    },
+    {
+      "id": "era_last_veins",
+      "name": "灵脉末年",
+      "span": "近三十年",
+      "summary": "主峰灵脉水位连年下降，坊市灵石翻价，宗门垄断收徒，散修涌入黑水泽。所有人都知道要变天，没人知道是哪一天。",
+      "turningPoints": [
+        "灵脉水位首次跌破红线",
+        "黑水泽沉渊秘境的雾气提前散开一角"
+      ]
+    }
+  ],
+  "regions": [
+    {
+      "id": "reg_yunxiu",
+      "name": "云岫城",
+      "terrain": "plain",
+      "climate": "半旱多风，春秋两季风沙最大",
+      "summary": "三百年前的商埠，如今靠转卖灵材和消息度日。明市在城东，鬼市在城西，缇骑的衙门就在中间看着两边。",
+      "danger": 2,
+      "factionIds": ["fac_sanhetang", "fac_tiqi"],
+      "places": [
+        {
+          "id": "place_yunxiu_west_market",
+          "name": "西市",
+          "kind": "city",
+          "summary": "云岫城的正门脸，绸缎庄挨着灵材铺，官牙在中间收税。白天做正经生意，天黑后有人掀开一角卖别的。",
+          "tags": ["集市", "明面", "官牙"]
+        },
+        {
+          "id": "place_yunxiu_ghost_market",
+          "name": "鬼市",
+          "kind": "secret",
+          "summary": "子时开张，寅时散场，位置每隔三日换一次。卖的东西不上秤，价钱不说二遍。",
+          "tags": ["黑市", "夜市", "违禁"]
+        },
+        {
+          "id": "place_yunxiu_herbal",
+          "name": "药王巷药庐",
+          "kind": "city",
+          "summary": "老掌柜死后由徒弟们撑着，卖药也收药，价钱公道。最近夜里常有人来退药，退的不是药。",
+          "tags": ["药庐", "老巷", "来路复杂"]
+        }
+      ]
+    },
+    {
+      "id": "reg_qixia",
+      "name": "栖霞山",
+      "terrain": "mountain",
+      "climate": "常年云雾，入冬早，山风带着铁锈味",
+      "summary": "青莲宗山门，苍梧最后一条灵脉从主峰穿过。外门在半山，内门在云上，两边的规矩不一样。",
+      "danger": 2,
+      "factionIds": ["fac_qinglian"],
+      "places": [
+        {
+          "id": "place_qixia_outer_gate",
+          "name": "外门",
+          "kind": "sect",
+          "summary": "半山的杂役院、演武场与弟子舍。名册每月一清，被划掉名字的人当天就得下山。",
+          "tags": ["外门", "杂役院", "演武场"]
+        },
+        {
+          "id": "place_qixia_herbal",
+          "name": "药庐",
+          "kind": "sect",
+          "summary": "宗门的丹房与药库，戒律上写着闲人免进。苏晚在这里管药。师父们死在这里的事不多，也不少。",
+          "tags": ["药庐", "丹房", "药库"]
+        },
+        {
+          "id": "place_qixia_main_peak",
+          "name": "莲台主峰",
+          "kind": "secret",
+          "summary": "内门与长老居所在云雾之上，非传召不得入。云中君的闭关殿在最高处，殿门七年没有开过。",
+          "tags": ["内门", "长老殿", "禁地"]
+        }
+      ]
+    },
+    {
+      "id": "reg_heishui",
+      "name": "黑水泽",
+      "terrain": "river",
+      "climate": "湿热多瘴，雾气终年不散",
+      "summary": "散修与魔道的地界，官府不管，宗门不问。水深处的沉渊秘境开了道口子，各路人马正在往里挤。",
+      "danger": 4,
+      "factionIds": ["fac_xuanyin"],
+      "places": [
+        {
+          "id": "place_heishui_market",
+          "name": "黑水集市",
+          "kind": "town",
+          "summary": "水上漂着船，船上摆着摊，散修与魔修在同一条跳板上讨价还价。规矩只有一条：不动手。",
+          "tags": ["散修", "销赃", "水上"]
+        },
+        {
+          "id": "place_heishui_crossing",
+          "name": "沉舟渡",
+          "kind": "wild",
+          "summary": "进泽的最后一个渡口，摆渡人收灵石也收命。船底下据说沉着前朝修士的遗蜕。",
+          "tags": ["渡口", "黑船", "传闻"]
+        },
+        {
+          "id": "place_heishui_secret_realm",
+          "name": "沉渊秘境入口",
+          "kind": "secret",
+          "summary": "雾气散开时露出一线石阶，三十年开一次，没人知道这次为什么提前。玄阴教守在入口，人头税翻着倍地涨。",
+          "tags": ["秘境", "禁地", "玄阴教关卡"]
+        }
+      ]
+    },
+    {
+      "id": "reg_guixu",
+      "name": "归墟古战场",
+      "terrain": "underground",
+      "climate": "无四季，灵气紊乱，风声不像风",
+      "summary": "上古修士陨落之地，三年前有人活着爬了出来。越往深处，越接近这世界枯竭的真相。",
+      "danger": 5,
+      "factionIds": [],
+      "places": [
+        {
+          "id": "place_guixu_outer_edge",
+          "name": "外环尸原",
+          "kind": "ruin",
+          "summary": "古战场的边缘，尸骨堆了三百年没人收。灵气紊乱，罗盘在这里只会打转。",
+          "tags": ["禁地", "尸骨", "灵气紊乱"]
+        },
+        {
+          "id": "place_guixu_broken_halberd",
+          "name": "折戟坪",
+          "kind": "ruin",
+          "summary": "半截插在地里的断戟比人高，锈迹底下灵光未散。有人在此捡到过遗物，也有人没回来。",
+          "tags": ["古战场", "遗物", "凶地"]
+        },
+        {
+          "id": "place_guixu_third_layer",
+          "name": "第三重",
+          "kind": "secret",
+          "summary": "禁令上的最后一道线。进去的人没有回来过。最近的传闻说，里面的东西自己走出来了。",
+          "tags": ["绝对禁地", "无人归来", "归墟之核"]
+        }
+      ]
+    }
+  ],
+  "factions": [
+    {
+      "id": "fac_qinglian",
+      "name": "青莲宗",
+      "kind": "sect",
+      "summary": "正道魁首，守着苍梧最后一条灵脉。老一辈死守成规，新一代暗中分裂，谁都知道撑不了几年，谁都不肯先说。",
+      "goal": "守住灵脉，维持正道秩序",
+      "resources": ["唯一残存灵脉的控制权", "丹药与功法传承", "世俗王朝的敕封名分"],
+      "stanceTo": [
+        { "factionId": "fac_xuanyin", "stance": "enemy" },
+        { "factionId": "fac_sanhetang", "stance": "neutral" },
+        { "factionId": "fac_tiqi", "stance": "rival" }
+      ]
+    },
+    {
+      "id": "fac_xuanyin",
+      "name": "玄阴教",
+      "kind": "cult",
+      "summary": "魔道巨擘，盘踞黑水泽，行事不择手段。教内高层流传着归墟之钥的密闻，为此已布局多年，手段越收越紧。",
+      "goal": "夺取灵脉，寻得归墟之钥",
+      "resources": ["魔功与祭炼手段", "黑水泽的散修网络", "散布各处的暗线细作"],
+      "stanceTo": [
+        { "factionId": "fac_qinglian", "stance": "enemy" },
+        { "factionId": "fac_sanhetang", "stance": "neutral" },
+        { "factionId": "fac_tiqi", "stance": "enemy" }
+      ]
+    },
+    {
+      "id": "fac_sanhetang",
+      "name": "三合堂",
+      "kind": "guild",
+      "summary": "云岫城最大的市井帮会，明面上开赌坊货栈，暗地里什么都卖：消息、路引、人命。只要给钱，不问来路。",
+      "goal": "在各方夹缝里守住财路",
+      "resources": ["遍布州县的情报网", "黑市渠道与销赃人脉", "赌坊货栈的现金流"],
+      "stanceTo": [
+        { "factionId": "fac_qinglian", "stance": "neutral" },
+        { "factionId": "fac_xuanyin", "stance": "neutral" },
+        { "factionId": "fac_tiqi", "stance": "neutral" }
+      ]
+    },
+    {
+      "id": "fac_tiqi",
+      "name": "缇骑",
+      "kind": "court",
+      "summary": "朝廷设下的修士监察衙门，持天子剑，专查灵脉枯竭真相。收编肯低头的修士，清除不肯的。",
+      "goal": "查清灵脉枯竭真相，把修士纳入朝廷掌控",
+      "resources": ["朝廷敕令与缉捕权", "制式符械与阵图", "遍布州县的耳目"],
+      "stanceTo": [
+        { "factionId": "fac_qinglian", "stance": "rival" },
+        { "factionId": "fac_xuanyin", "stance": "enemy" },
+        { "factionId": "fac_sanhetang", "stance": "neutral" }
+      ]
+    }
+  ],
+  "powerSystem": {
+    "name": "灵根 / 周天",
+    "resource": "灵气",
+    "tiers": [
+      {
+        "name": "炼气",
+        "stage": 1,
+        "maxLayer": 9,
+        "lifespan": 120,
+        "requires": "有灵根者引气入体即可入炼气，灵根残缺者引气艰难",
+        "breakthroughRisk": 50,
+        "attrBonus": 2
+      },
+      {
+        "name": "筑基",
+        "stage": 2,
+        "maxLayer": 3,
+        "lifespan": 200,
+        "requires": "炼气九层圆满，闭关冲击筑基，失败跌层并伤经脉",
+        "breakthroughRisk": 65,
+        "attrBonus": 3
+      },
+      {
+        "name": "金丹",
+        "stage": 3,
+        "maxLayer": 3,
+        "lifespan": 350,
+        "requires": "筑基后期圆满，结丹需灵地闭关，夺天地一线生机",
+        "breakthroughRisk": 75,
+        "attrBonus": 3
+      },
+      {
+        "name": "元婴",
+        "stage": 4,
+        "maxLayer": 3,
+        "lifespan": 600,
+        "requires": "金丹三品圆满，碎丹化婴，神魂不灭者方可成婴",
+        "breakthroughRisk": 85,
+        "attrBonus": 4
+      }
+    ],
+    "rules": [
+      "灵力不可凭空恢复，必须吐纳或服丹。",
+      "越阶斗法，境界差每层压制 12 点成功率。",
+      "心魔无法靠丹药清除，只能靠事件化解。",
+      "突破必须闭关，中途被打断即失败并受伤。"
+    ],
+    "costs": [
+      "吐纳过急拉伤经脉，重伤未愈者强行运功加重伤势。",
+      "越阶强行催动灵力透支气血，透支过三成落下终身病根。",
+      "突破失败轻则修为跌落，重则心魔滋生、经脉受损。"
+    ]
+  },
+  "taboos": [
+    "归墟古战场不得深入第三重。",
+    "不得以活人祭炼。",
+    "宗门内不得杀同门，违者全宗追杀。"
+  ],
+  "npcPool": [
+    {
+      "id": "npc_shen_yan",
+      "name": "沈砚",
+      "role": "青莲宗外门执事",
+      "factionId": "fac_qinglian",
+      "regionId": "reg_qixia",
+      "tier": "筑基",
+      "public": {
+        "appearance": "四十来岁，面白无须，眼皮总是半垂，袖口浆洗得发硬。",
+        "manner": "说话慢，记仇快。收钱办事从不留字据，罚人当众，赏人私下。",
+        "affiliation": "青莲宗外门执事，掌外门名册与月例"
+      },
+      "private": {
+        "secret": "他是玄阴教埋在青莲宗的暗线，负责甄别可策反的弟子，名录按月交黑市递出。",
+        "motive": "换一个能在灵脉枯竭之后让他活下去的新主子。",
+        "fear": "策反名录落入缇骑之手。",
+        "leverage": [
+          "经手外门月例与灵石分账，账目有亏空",
+          "暗线身份本身就是死穴，谁握着证据谁就能使唤他"
+        ]
+      }
+    },
+    {
+      "id": "npc_su_wan",
+      "name": "苏晚",
+      "role": "青莲宗药庐师姐",
+      "factionId": "fac_qinglian",
+      "regionId": "reg_qixia",
+      "tier": "筑基",
+      "public": {
+        "appearance": "二十出头，眉眼干净，袖口常沾药渍，走路没有声音。",
+        "manner": "声音轻，问病细心，从不追问你不想答的话。",
+        "affiliation": "青莲宗药庐师姐，主理丹房与药库"
+      },
+      "private": {
+        "secret": "苏家当年被青莲宗灭门，她是漏网的最后一个，改名换姓进了药庐。",
+        "motive": "接近有身份的弟子，借他们的手撬开宗门的内幕。",
+        "fear": "在动手之前被人认出苏家的旧姓。",
+        "leverage": [
+          "会调一味只有苏家秘传的解毒散",
+          "对宗门旧档比对门弟子还熟，翻过错就记着"
+        ]
+      }
+    },
+    {
+      "id": "npc_lu_xingzhou",
+      "name": "陆行舟",
+      "role": "三合堂掌柜",
+      "factionId": "fac_sanhetang",
+      "regionId": "reg_yunxiu",
+      "public": {
+        "appearance": "身材微胖，常带笑，腰间挂一串黄铜钥匙，走路慢，眼不慢。",
+        "manner": "三句话不离价钱，从不给准话。凡是他知道的，都能标价。",
+        "affiliation": "云岫城三合堂掌柜，明面开货栈"
+      },
+      "private": {
+        "secret": "他与缇骑有私下约定，把散修的行踪按条卖给朝廷，黑水集市那批人就是他卖出去的。",
+        "motive": "三合堂要活，就得在大鱼中间反复横跳，谁都不认，谁都收钱。",
+        "fear": "散修圈子查出卖人的人是他。",
+        "leverage": [
+          "三合堂账本记着半个云岫城的把柄",
+          "替缇骑办过几桩灭口事，做过就收不回，也见不得光"
+        ]
+      }
+    },
+    {
+      "id": "npc_bai_wujiu",
+      "name": "白无咎",
+      "role": "玄阴教执事",
+      "factionId": "fac_xuanyin",
+      "regionId": "reg_heishui",
+      "tier": "金丹",
+      "public": {
+        "appearance": "一身洗旧的玄袍，脸色苍白如纸，说话时几乎不动嘴唇。",
+        "manner": "客气到让人发冷，从不提高声音，威胁时像在聊天。",
+        "affiliation": "玄阴教执事，黑水泽凶名在外"
+      },
+      "private": {
+        "secret": "他奉教中之命寻一枚玉牌，那玉牌与主角身上来历不明之物同出一源。",
+        "motive": "玉牌是开启归墟之钥的凭据，找齐了，他才够资格往上爬。",
+        "fear": "教内知道他把搜到的残片私藏了一半。",
+        "leverage": [
+          "在黑水泽结下的血仇太多，仇家排着队",
+          "私藏残片一事若发作，教规不容他活"
+        ]
+      }
+    },
+    {
+      "id": "npc_yun_zhongjun",
+      "name": "云中君",
+      "role": "青莲宗长老",
+      "factionId": "fac_qinglian",
+      "regionId": "reg_qixia",
+      "tier": "元婴",
+      "public": {
+        "appearance": "常年闭关，无人见过近貌。据说白发束玉冠，十年前最后一次露面时已显老态。",
+        "manner": "极少开口，出关理事只下短令，从不解释。",
+        "affiliation": "青莲宗长老，莲台主峰闭关多年"
+      },
+      "private": {
+        "secret": "他早在七年前就死了，如今坐在莲台上的身体被一个外来神魂夺舍。",
+        "motive": "借青莲宗的灵脉养这具躯壳，等一个通往归墟深处的时机。",
+        "fear": "被人以本命旧物试探，神魂不稳时现出破绽。",
+        "leverage": [
+          "闭关殿的暗门只有他知道位置",
+          "夺舍之身在灵气紊乱处藏不住"
+        ]
+      }
+    },
+    {
+      "id": "npc_a_ruo",
+      "name": "阿箬",
+      "role": "云岫城乞儿",
+      "regionId": "reg_yunxiu",
+      "public": {
+        "appearance": "十四五岁，瘦，头发用草绳扎着，一双眼睛亮得不像乞儿。",
+        "manner": "嘴碎，见谁都三分熟。讨钱时翻跟头，报信时收铜板。",
+        "affiliation": "云岫城西市一带的乞儿头"
+      },
+      "private": {
+        "secret": "他是归墟幸存者的后代，贴身藏着半枚残图，那是家里传下来的最后一样东西。",
+        "motive": "弄明白祖辈从归墟带出来的东西到底是什么。",
+        "fear": "残图被人抢走，自己死得不明不白。",
+        "leverage": [
+          "西市的乞儿网消息比三合堂还快",
+          "认得几个从归墟方向来的老面孔"
+        ]
+      }
+    },
+    {
+      "id": "npc_pei_ji",
+      "name": "裴绩",
+      "role": "缇骑校尉",
+      "factionId": "fac_tiqi",
+      "regionId": "reg_yunxiu",
+      "public": {
+        "appearance": "黑衣束甲，佩制式符刀，左眉一道旧疤。",
+        "manner": "话少，问话只问一遍。记档用小楷，从不接受请托。",
+        "affiliation": "缇骑校尉，驻云岫城"
+      },
+      "private": {
+        "secret": "他奉命清查灵脉枯竭真相，已从账目里看出青莲宗有自导自演的痕迹。",
+        "motive": "要一个能结案、能交代的真相，不管动到谁。",
+        "fear": "案子办到一半被上头按下来，自己变成弃子。",
+        "leverage": [
+          "缉捕令在手，名分压人",
+          "手里握着几宗未结的修士命案卷宗"
+        ]
+      }
+    }
+  ],
+  "eventSeeds": [
+    {
+      "id": "ev_grand_contest",
+      "title": "外门大比",
+      "kind": "conflict",
+      "summary": "外门三年一度的大比，赢了进内门名录，输了继续挑水。执事沈砚借大比相看弟子，榜下藏着交易。",
+      "regionId": "reg_qixia",
+      "factionIds": ["fac_qinglian"],
+      "npcIds": ["npc_shen_yan"],
+      "requires": {
+        "chapterMin": 3,
+        "flags": { "identity_sect": "qinglian" }
+      },
+      "effects": {
+        "danger": "medium",
+        "threadId": "t_shen_recruit",
+        "hint": "大比的名次会改变沈砚对主角的处置方式"
+      },
+      "weight": 70,
+      "once": true
+    },
+    {
+      "id": "ev_herb_murder",
+      "title": "药庐命案",
+      "kind": "mystery",
+      "summary": "药王巷药庐的炉火半夜熄了，又有人死在药炉旁。官差进不了巷子，伙计们讳莫如深，而你是最后见过死者的人之一。",
+      "regionId": "reg_yunxiu",
+      "factionIds": [],
+      "npcIds": ["npc_su_wan"],
+      "requires": {
+        "chapterMin": 2,
+        "chapterMax": 12,
+        "placeId": "place_yunxiu_herbal",
+        "flags": { "visited_place_yunxiu_herbal": true }
+      },
+      "effects": {
+        "danger": "medium",
+        "threadId": "t_herb_murder",
+        "hint": "命案背后有人借药庐走灵材私账，或借此嫁祸"
+      },
+      "weight": 60,
+      "once": true
+    },
+    {
+      "id": "ev_vein_drain",
+      "title": "灵脉枯竭",
+      "kind": "disaster",
+      "summary": "主峰灵脉的水位又降了一寸，坊市灵石翻价，有人囤积，有人抢。所有人都感觉到，剩下的时间不多了。",
+      "factionIds": ["fac_qinglian", "fac_tiqi"],
+      "npcIds": ["npc_pei_ji", "npc_yun_zhongjun"],
+      "requires": {
+        "chapterMin": 1
+      },
+      "effects": {
+        "danger": "high",
+        "threadId": "t_vein_truth",
+        "hint": "灵脉枯竭不是天灾，有人在里面做手脚"
+      },
+      "weight": 80,
+      "once": true
+    },
+    {
+      "id": "ev_recruit",
+      "title": "宗门选徒",
+      "kind": "opportunity",
+      "summary": "青莲宗开山门收徒，云岫城西市设了报名的棚子。灵根合格者当场带走，落选者交三枚灵石换一句评语。落选的比入选的多得多。",
+      "regionId": "reg_yunxiu",
+      "factionIds": ["fac_qinglian"],
+      "npcIds": ["npc_shen_yan"],
+      "requires": {
+        "chapterMin": 4,
+        "chapterMax": 8,
+        "flags": { "identity_sectless": true }
+      },
+      "effects": {
+        "danger": "low",
+        "threadId": "t_sect_entry",
+        "hint": "入宗意味着庇护，也意味着名册、管束与站队"
+      },
+      "weight": 65,
+      "once": true
+    },
+    {
+      "id": "ev_blackwater",
+      "title": "秘境开启",
+      "kind": "opportunity",
+      "summary": "黑水泽深处的沉渊秘境雾气散开一角，散修连夜赶去占位置。玄阴教的人守在入口收人头税，进去的人十个里回不来三个。",
+      "regionId": "reg_heishui",
+      "factionIds": ["fac_xuanyin"],
+      "npcIds": ["npc_bai_wujiu"],
+      "requires": {
+        "chapterMin": 2,
+        "chapterMax": 3,
+        "knowledge": ["残图指向黑水泽深处的秘境"]
+      },
+      "effects": {
+        "danger": "high",
+        "threadId": "t_guixu_key",
+        "hint": "秘境深处的东西与残图同源，归墟之钥的线索在此汇拢"
+      },
+      "weight": 55,
+      "once": true
+    },
+    {
+      "id": "ev_warrant",
+      "title": "缇骑缉拿",
+      "kind": "conflict",
+      "summary": "缇骑的缉捕文书贴上了城门，画像画得不算准。他们开始逐户问话，被点名的人要么去衙门自证，要么连夜出城。",
+      "regionId": "reg_yunxiu",
+      "factionIds": ["fac_tiqi"],
+      "npcIds": ["npc_pei_ji", "npc_lu_xingzhou"],
+      "requires": {
+        "chapterMin": 2,
+        "flags": { "wanted": true }
+      },
+      "effects": {
+        "danger": "high",
+        "threadId": "t_warrant",
+        "hint": "缉拿背后是裴绩在顺着名单钓人，三合堂在旁边递名单"
+      },
+      "weight": 50,
+      "once": false
+    },
+    {
+      "id": "ev_uncle_coup",
+      "title": "师叔夺权",
+      "kind": "conflict",
+      "summary": "师叔一系开始清洗内门的人手，名册上被划掉的名字接连调去守矿。宗门没有明说，但所有人都知道，到了站队的时候。",
+      "regionId": "reg_qixia",
+      "factionIds": ["fac_qinglian"],
+      "npcIds": ["npc_shen_yan"],
+      "requires": {
+        "chapterMin": 2,
+        "flags": { "identity_inner_disciple": true }
+      },
+      "effects": {
+        "danger": "medium",
+        "threadId": "t_uncle_leverage",
+        "hint": "师叔手里的把柄会在夺权时拿出来用"
+      },
+      "weight": 60,
+      "once": true
+    },
+    {
+      "id": "ev_heart_demon",
+      "title": "心魔初现",
+      "kind": "mystery",
+      "summary": "夜里打坐，眼前总是那处过不去的旧景。丹药压不住，老修士说这不是病，是心里欠下的东西开始讨债。",
+      "factionIds": [],
+      "npcIds": ["npc_su_wan"],
+      "requires": {
+        "chapterMin": 2,
+        "flags": { "heartDemonMin": 2 }
+      },
+      "effects": {
+        "danger": "medium",
+        "hint": "心魔压不住，只能找化解的因由"
+      },
+      "weight": 45,
+      "once": true
+    },
+    {
+      "id": "ev_ruins_tremor",
+      "title": "归墟异动",
+      "kind": "mystery",
+      "summary": "归墟方向的地脉连震三夜，外环的尸骨堆里渗出黑雾。黑水泽的水位跟着涨，玄阴教的人已经动身，缇骑的斥候也出现在尸原边缘。",
+      "regionId": "reg_guixu",
+      "factionIds": ["fac_xuanyin", "fac_tiqi"],
+      "npcIds": ["npc_bai_wujiu", "npc_a_ruo"],
+      "requires": {
+        "chapterMin": 3
+      },
+      "effects": {
+        "danger": "high",
+        "threadId": "t_guixu_awake",
+        "hint": "归墟里的活物醒了，第二卷从这里开局"
+      },
+      "weight": 50,
+      "once": true
+    },
+    {
+      "id": "ev_oath",
+      "title": "道侣之约",
+      "kind": "encounter",
+      "summary": "有人在你落难时不声不响地留了药，有人陪你走了一段没人敢走的夜路。到了该说清的时候，说了就回不了头。",
+      "factionIds": [],
+      "npcIds": [],
+      "requires": {
+        "chapterMin": 2,
+        "flags": { "anyNpcAffinityGte": 60 }
+      },
+      "effects": {
+        "danger": "low",
+        "hint": "许诺即枷锁，对方说的未必全是真话"
+      },
+      "weight": 40,
+      "once": true
+    }
+  ],
+  "endgame": [
+    {
+      "id": "ending_death",
+      "type": "death",
+      "condition": "vitality <= 0 || age >= lifespan",
+      "title": "身死道消",
+      "epitaphTemplate": "{name}卒于{age}岁，境界止步{realm}。坟头没有碑。"
+    },
+    {
+      "id": "ending_fall",
+      "type": "fall",
+      "condition": "heartDemon >= 5",
+      "title": "走火入魔",
+      "epitaphTemplate": "{name}败给了自己，时年{age}岁。"
+    },
+    {
+      "id": "ending_ascension",
+      "type": "ascension",
+      "condition": "stage >= 4 && layer >= 3 && progress >= 100 && flag(\"guixu_truth\") == true",
+      "title": "破界而去",
+      "epitaphTemplate": "{name}破开归墟的雾，从此没有人再见过他。"
+    },
+    {
+      "id": "ending_legacy",
+      "type": "legacy",
+      "condition": "flag(\"left_the_path\") == true && flag(\"truth_left\") == true",
+      "title": "人间留名",
+      "epitaphTemplate": "{name}没有成仙，{age}岁，名字留在了书里。"
+    }
+  ]
+}
