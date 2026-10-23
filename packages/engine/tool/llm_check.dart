@@ -1,17 +1,25 @@
 import 'dart:io';
 import 'package:engine/engine.dart';
 
+/// 探活小工具：渠道由环境变量指定（LLM_KEY / LLM_BASE_URL / LLM_MODEL）
 Future<void> main() async {
   final key = Platform.environment['LLM_KEY'] ?? '';
+  final baseUrl = Platform.environment['LLM_BASE_URL'] ?? '';
+  final model = Platform.environment['LLM_MODEL'] ?? '';
+  if (key.isEmpty || baseUrl.isEmpty || model.isEmpty) {
+    stderr.writeln('需要环境变量 LLM_KEY、LLM_BASE_URL、LLM_MODEL');
+    exitCode = 2;
+    return;
+  }
   final store = InMemoryKeyStore();
   await store.write(key);
   final gateway = ModelGateway(GatewayConfig(
     keyStore: store,
     settings: () => ModelSettings(
       protocol: LlmProtocol.openai_chat,
-      baseUrl: 'https://apihub.agnes-ai.com/v1',
-      narrativeModel: 'agnes-3.0-flash',
-      smallModel: 'agnes-3.0-flash',
+      baseUrl: baseUrl,
+      narrativeModel: model,
+      smallModel: model,
     ),
   ));
 

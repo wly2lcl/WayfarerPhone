@@ -90,14 +90,6 @@ const kPresets = <Preset>[
     smallModel: 'gpt-4.1-mini',
   ),
   Preset(
-    id: 'agnes',
-    label: 'Agnes（agnes-3.0-flash）',
-    protocol: LlmProtocol.openai_chat,
-    baseUrl: 'https://apihub.agnes-ai.com/v1',
-    narrativeModel: 'agnes-3.0-flash',
-    smallModel: 'agnes-3.0-flash',
-  ),
-  Preset(
     id: 'custom',
     label: '自定义',
     protocol: LlmProtocol.openai_chat,

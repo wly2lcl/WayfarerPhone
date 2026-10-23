@@ -242,7 +242,7 @@ class ModelGateway {
 
     HttpClientResponse response;
     try {
-      // API参考 §5.3：首字超时放宽到 60s —— Agnes 等供应商实测首字延迟可达 40s
+      // API参考 §5.3：首字超时放宽到 60s —— 实测部分供应商首字延迟可达 40s
       response = await request.close().timeout(const Duration(seconds: 60));
     } on TimeoutException {
       throw EngineException(EngineCode.modelTimeout, '首字超时', canRetry: true);

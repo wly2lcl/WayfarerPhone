@@ -234,9 +234,9 @@ void main() {
       );
       await e1.saveModelSettings(ModelSettings(
         protocol: LlmProtocol.openai_chat,
-        baseUrl: 'https://apihub.agnes-ai.com/v1',
-        narrativeModel: 'agnes-3.0-flash',
-        smallModel: 'agnes-3.0-flash',
+        baseUrl: 'https://llm.example.com/v1',
+        narrativeModel: 'test-model',
+        smallModel: 'test-model',
       ));
       await e1.close();
 
@@ -247,9 +247,9 @@ void main() {
       );
       final s = e2.modelSettings;
       expect(s.configured, isTrue);
-      expect(s.baseUrl, 'https://apihub.agnes-ai.com/v1');
-      expect(s.narrativeModel, 'agnes-3.0-flash');
-      expect(s.smallModel, 'agnes-3.0-flash');
+      expect(s.baseUrl, 'https://llm.example.com/v1');
+      expect(s.narrativeModel, 'test-model');
+      expect(s.smallModel, 'test-model');
       await e2.close();
     });
   });

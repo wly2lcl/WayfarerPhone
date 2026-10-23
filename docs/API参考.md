@@ -288,7 +288,7 @@ class TurnError        extends TurnEvent { final EngineCode code; final String m
 | 项 | 值 |
 | --- | --- |
 | 连接超时 | 10 s |
-| 首字超时 | 60 s（原 30 s；M0 实测 Agnes 等供应商首字延迟可达 40 s+，放宽并保留重试） |
+| 首字超时 | 60 s（原 30 s；M0 实测部分供应商首字延迟可达 40 s+，放宽并保留重试） |
 | 流空闲超时 | 30 s |
 | 单次总超时 | 180 s |
 | 网络错误重试 | 2 次，指数退避 1 s / 3 s |
