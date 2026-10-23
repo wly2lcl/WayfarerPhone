@@ -29,7 +29,7 @@
 ### 1.1 契约与脚手架
 
 - [ ] **WF-M0-01-01 初始化仓库骨架**
-  产出：`apps/mobile/`、`packages/contracts/`、`packages/engine/` 三个可安装的 Dart 包，`path:` 依赖串联；根 `.gitignore` 覆盖 `build/`、`.dart_tool/`、签名文件
+  产出：`apps/mobile/`、`packages/contracts/`、`packages/engine/` 三个可安装的 Dart 包，`path:` 依赖串联；根 `tool/`（`check_links.dart`、`golden/`）；根 `.gitignore` 覆盖 `build/`、`.dart_tool/`、签名文件
   验收：干净环境一次 `flutter pub get` 成功
 - [ ] **WF-M0-01-02 契约模型定义**
   产出：`world.dart`、`identity.dart`、`run_state.dart`、`delta.dart`、`choice.dart`、`scene_plan.dart`、`manifest.dart`
@@ -117,10 +117,10 @@
 ### 1.6 回合编排
 
 - [ ] **WF-M0-06-01 上下文装配**
-  产出：`turn/context.dart`，五段预算裁剪
+  产出：`turn/context.dart`，七段装配（系统/世界/身份/记忆/检索/近况/任务）与 8k 预算裁剪
   验收：任意回合输入 ≤ 8000 token；近期正文只留最近 3 回合
 - [ ] **WF-M0-06-02 意图分类**
-  产出：`prompts/classifier.dart`，三类分流（行动 / 查询 / 越权）
+  产出：`prompts/classifier.dart`，四类分流（行动 / 查询 / meta / 越权）
   验收：标注集 50 条，准确率 ≥ 90%
 - [ ] **WF-M0-06-03 导演**
   产出：`prompts/director.dart`，输出 `ScenePlan`
@@ -134,6 +134,9 @@
 - [ ] **WF-M0-06-06 回合串联**
   产出：`turn/turn_engine.dart` 固定八步顺序
   验收：端到端跑通 1 回合，事件顺序与 API 参考 §4 一致
+- [ ] **WF-M0-06-07 卷末压缩**
+  产出：`turn/compact.dart`，在 Isolate 内生成四段记忆（事实 / 关系 / 伏笔 / 卷记）并写回快照
+  验收：第 32 回合触发一次；压缩后下一回合输入仍 ≤ 8000 token；黄金回合 `g07` 通过
 
 依赖：05-02、05-03、01-04 完成后才能开始 06-06。
 

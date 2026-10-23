@@ -51,9 +51,12 @@ class EngineException implements Exception {
 | `CONTENT_BLOCKED` | 输入或生成命中本地规则 | 引导换一种表达 |
 | `STATE_INVALID` | 状态校验不可恢复 | 上报日志，允许回滚快照 |
 | `STORAGE_FULL` | 本地磁盘不足 | 提示清理旧局或导出 |
-| `IMPORT_INVALID` | `.world` 包结构 / 校验和 / 版本不通过 | 展示具体原因 |
+| `IMPORT_INVALID` | `.world` / `.run` 包结构、校验和或格式版本不通过 | 展示具体原因 |
 | `IMPORT_TOO_LARGE` | 超过 20 MB 或解压后超限 | 拒绝 |
-| `EXPORT_FORBIDDEN` | 该世界 `exportable = 0` | 说明为导入来源，不可导出 |
+| `EXPORT_FORBIDDEN` | 该世界 `exportable = 0`，或所属世界不可导出导致该局 `.run` 不可导出 | 说明为导入来源，不可导出 |
+| `DRAFT_INCOMPLETE` | 草稿完整度不足，不可生成或冻结 | 展示缺失字段，回到访谈 |
+| `QUALITY_GATE_FAILED` | 一致性检查存在 `error` 级问题 | 打开编辑器定位问题项 |
+| `WORLD_FROZEN` | 已冻结版本不可修改 | 提示另存为新草稿 |
 
 > 没有 `AUTH_REQUIRED`、`FORBIDDEN`、`QUOTA_EXCEEDED`、`CONFLICT`：无账号、无配额、无多端写入。
 
@@ -79,6 +82,8 @@ class EngineException implements Exception {
 | `assistant.ask(runId, text)` | 向随行助手提问，返回 `Stream<AssistantEvent>` |
 | `library.import(File)` | 导入 `.world` 包 |
 | `library.export(worldId)` | 导出 `.world` 包，返回文件路径 |
+| `library.rename(worldId, title)` | 重命名本地世界 |
+| `library.delete(worldId)` | 删除世界、版本与原件 |
 | `usage.summary({from, to})` | 本地用量与成本估算 |
 | `settings.testConnection()` | 用最小请求验证 baseUrl + Key + 模型名 |
 
@@ -171,7 +176,10 @@ final archive = await engine.runs.archive('r_2b9');
 ```dart
 await for (final e in engine.assistant.ask('r_2b9', '苏晚这个人可信吗？')) { ... }
 // AssistantDelta(text) / AssistantEnd(usage)
+// 失败按 Prompt 契约返回固定文案，仍以 AssistantDelta + AssistantEnd 收尾，不新增错误事件
 ```
+
+`AssistantEvent` 只有两种：`AssistantDelta(text)` 与 `AssistantEnd(usage)`。
 
 助手不写状态、不推进回合。只读 `RunState.knowledge` 与公开世界信息，不读 NPC 私密面与未回收伏笔的隐藏内容。
 
@@ -207,7 +215,7 @@ class NarrationDelta   extends TurnEvent { final String text; }
 class NarrationEnd     extends TurnEvent {}
 class ChoicesAvailable extends TurnEvent { final List<Choice> options; }
 class StatePatch       extends TurnEvent { final StateDelta delta; }
-class TurnEnd          extends TurnEvent { final int turn; final String snapshotId; final Ending? ending; }
+class TurnEnd          extends TurnEvent { final int turn; final String? snapshotId; final Ending? ending; }  // 查询/meta 未落库时 snapshotId 为 null
 class TurnError        extends TurnEvent { final EngineCode code; final String message; final bool canRetry; }
 ```
 
@@ -303,7 +311,7 @@ class TurnError        extends TurnEvent { final EngineCode code; final String m
 ## 6. 版本与兼容
 
 - 无 URL 版本化，改为 `Engine.apiVersion`（当前 `1`）。破坏性变更升主版本，并在启动时提示用户「此版本存档需要升级」。
-- `.world` 包内的 `manifest.schemaVersion`、`.run` 包内的 `manifest.schemaVersion` 与 `RunState.schemaVersion` 各自独立演进；导入时向前兼容一个版本，超出范围报 `IMPORT_INVALID`。
+- `.world` 与 `.run` 包内的 `manifest.formatVersion`、以及库内的 `RunState.schemaVersion` 各自独立演进；导入时向前兼容一个版本，超出范围报 `IMPORT_INVALID`。
 - `.run` 包必须携带所绑定世界的 `worldId + worldVersion`；本机没有该版本时拒绝导入并提示「先导入对应世界」，不允许自动升级到新版本。
 - 引擎新增字段不视为破坏性变更；删除或改名必须提供迁移函数。
 

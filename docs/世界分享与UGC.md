@@ -34,6 +34,8 @@
 | imported（小说 TXT 导入） | 是 | 是（仅本地） | 否（`exportable = 0`） |
 | shared（导入的 `.world`） | 是 | 是（本地副本） | 是，须保留原 `NOTICE.txt` 与来源声明 |
 
+「可编辑」指**冻结前**的草稿阶段；一旦冻结为 `world_versions` 的一条版本，任何来源都不可原地修改，只能「另存为新草稿 → 修改 → 冻结新版本」。已开局的老局仍绑定旧版本。
+
 硬规则（全部在本地判定，不依赖服务端）：
 
 1. `worlds.source = 'imported'` 的世界 `exportable` 恒为 0，App 内不存在导出入口

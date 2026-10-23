@@ -6,7 +6,7 @@
 
 > 当前阶段：**方案阶段，尚未开始编码**。文档覆盖 M0 的全部设计与契约，并给出 M1–M3（世界工坊、小说导入、本地分享）与双端上线的机制契约。
 >
-> v0.2 形态：iOS + Android 双端 Flutter App，**无服务端、无账号、无社区**。数据全部在手机本地 SQLite；模型由用户自带 Key 直连在线 API；世界通过 `.world` 文件分享。
+> v0.3 形态：iOS + Android 双端 Flutter App，**无服务端、无账号、无社区**。数据全部在手机本地 SQLite；模型由用户自带 Key 直连所选服务（OpenAI Chat / OpenAI Responses / Anthropic 三协议）；世界通过 `.world` 分享，存档通过 `.run` 迁移。
 
 ---
 
@@ -16,10 +16,10 @@
 | --- | --- |
 | 运行位置 | 手机本地（iOS / Android），除模型请求外全程离线 |
 | 数据 | 本地 SQLite（drift），随 App 沙盒，可导出备份 |
-| 模型 | 用户自带 Key，直连 OpenAI 兼容 API；Key 存 Keychain / Keystore |
+| 模型 | 用户自带 Key，直连所选服务（OpenAI Chat / OpenAI Responses / Anthropic 三协议）；Key 存 Keychain / Keystore |
 | 世界分享 | `.world` 文件，经系统分享面板导出、文件选择器导入 |
 | 账号 / 社区 | 无。没有登录、没有公开榜单、没有举报后台 |
-| 费用 | App 付费或免费；模型 token 费用由用户自己的 Key 承担 |
+| 费用 | App 一次性付费；模型 token 费用由用户自己的 Key 承担 |
 
 ---
 
