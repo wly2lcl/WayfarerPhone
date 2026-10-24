@@ -257,6 +257,7 @@ Future<void> main() async {
           t4.whereType<ChoicesAvailable>().isEmpty &&
           t4.whereType<StatePatch>().isEmpty;
     }());
+    _check('未到卷末不触发压缩', !fake!.actualCalls.contains(GatewayRole.compress));
 
     // ---- 黄金回合 7：卷末收束与压缩 ----
     final head = await RunsDaoAccess.head(db, runId);
@@ -297,14 +298,98 @@ Future<void> main() async {
         t7.whereType<TurnEnd>().single.turn == 32);
     _check('卷末压缩触发（compress 被调用）',
         fake!.actualCalls.contains(GatewayRole.compress));
+    _check('卷末完成事件携带章节与理由', () {
+      final c = t7.whereType<ChapterCompleted>().single;
+      return c.chapter == 1 && c.reason.contains('突破');
+    }());
+    _check('卷末事件带卷记小结',
+        t7.whereType<ChapterCompleted>().single.summary == '第一卷：药庐命案未了，玉简来历成谜');
     final mem = await RunsDaoAccess.memory(db, runId);
     _check('压缩记忆落库', mem != null && mem.contains('第一卷'));
     final headAfter = await RunsDaoAccess.head(db, runId);
     _check('章节推进到 2', headAfter!.chapter == 2, headAfter.chapter);
 
+    // ---- 黄金回合 8：导演不收卷时，第 35 回合引擎兜底强制收卷 ----
+    var draw3 = await engine.draw('w_cangwu');
+    while (!draw3.identities.any((i) => i.id == 'id_herb_apprentice')) {
+      draw3 = await engine.draw('w_cangwu');
+    }
+    fake!.expect(GatewayRole.narrator, '第三条命的清晨，药庐的雾还没散。');
+    final start3 = await engine.create(
+      worldId: 'w_cangwu',
+      identityId: 'id_herb_apprentice',
+      drawToken: draw3.drawToken,
+    );
+    final head3 = await RunsDaoAccess.head(db, start3.runId);
+    await (db.update(db.runs)..where((r) => r.id.equals(start3.runId)))
+        .write(RunsCompanion(turnNo: const Value(34)));
+    final snap3 = await (db.select(db.runSnapshots)
+          ..where((s) => s.id.equals(head3!.headSnapshotId!)))
+        .getSingle();
+    final snapState3 = jsonDecode(snap3.state) as Map<String, Object?>;
+    (snapState3['meta'] as Map)['turnNo'] = 34;
+    await (db.update(db.runSnapshots)..where((s) => s.id.equals(snap3.id)))
+        .write(RunSnapshotsCompanion(state: Value(jsonEncode(snapState3))));
+
+    fake!.expectAll([
+      (GatewayRole.classifier,
+          '{"kind":"action","intent":"照常过一天","target":null,"confidence":0.9}'),
+      // 导演持续不收卷：daily 计划、无 chapterEnd
+      (GatewayRole.director, _planJson(choices: const [
+        {'intent': '照常打理药庐', 'risk': 'low'},
+        {'intent': '出门转转', 'risk': 'low'},
+      ])),
+      (GatewayRole.narrator, '日子照旧。你在药庐里碾了一下午的药，手边的故事没有变化。'),
+      (GatewayRole.extractor, _extractJson(facts: ['平静的一天'])),
+      (GatewayRole.compress, jsonEncode({
+        'facts': ['平静的一天'],
+        'relationChanges': <String>[],
+        'openThreads': <String>[],
+        'volumeSummary': '第一卷：药庐日常无疾而终',
+      })),
+    ]);
+    final t8 = await engine.turns
+        .run(start3.runId, expectedTurn: 34, input: FreeTextInput('照常过一天'))
+        .toList();
+    _check('导演不收卷：第 35 回合兜底强制收卷（事件章节=1）',
+        t8.whereType<ChapterCompleted>().single.chapter == 1);
+    final headAfter3 = await RunsDaoAccess.head(db, start3.runId);
+    _check('强制收卷后章节推进到 2', headAfter3!.chapter == 2, headAfter3.chapter);
+    final narr3 = await engine.listNarration(start3.runId);
+    _check('历史叙事含卷末分幅',
+        narr3.any((n) => n.isMarker && n.text.contains('第 1 卷 · 完')));
+    _check('卷末分幅带卷记小结',
+        narr3.firstWhere((n) => n.isMarker).summary == '第一卷：药庐日常无疾而终');
+
+    // ---- 黄金回合 9：收卷后按卷重新计数，下一回合不得再次触发压缩 ----
+    fake!.expectAll([
+      (GatewayRole.classifier,
+          '{"kind":"action","intent":"开始新的旅程","target":null,"confidence":0.9}'),
+      (GatewayRole.director, _planJson(choices: const [
+        {'intent': '收拾行囊出发', 'risk': 'low'},
+        {'intent': '先在城里打探消息', 'risk': 'low'},
+      ])),
+      (GatewayRole.narrator, '第二卷开始了。你背起行囊，走上北去的官道。'),
+      (GatewayRole.extractor, _extractJson(facts: ['踏上旅途'])),
+    ]);
+    final compressCallsBefore = fake!.actualCalls.where((r) => r == GatewayRole.compress).length;
+    final t9 = await engine.turns
+        .run(runId, expectedTurn: 32, input: FreeTextInput('整装出发'))
+        .toList();
+    _check('收卷后下一回合正常推进到 33',
+        t9.whereType<TurnEnd>().single.turn == 33);
+    final compressCallsAfter = fake!.actualCalls.where((r) => r == GatewayRole.compress).length;
+    _check('按卷计数重置：未再次触发压缩', compressCallsAfter == compressCallsBefore,
+        '$compressCallsBefore → $compressCallsAfter');
+    final headAfter9 = await RunsDaoAccess.head(db, runId);
+    _check('章节保持为 2', headAfter9!.chapter == 2, headAfter9.chapter);
+
     // ---- 黄金回合 5：死亡后行动封锁 ----
+    var draw2 = await engine.draw('w_cangwu');
+    while (!draw2.identities.any((i) => i.id == 'id_herb_apprentice')) {
+      draw2 = await engine.draw('w_cangwu');
+    }
     fake!.expect(GatewayRole.narrator, '新的开始。');
-    final draw2 = await engine.draw('w_cangwu');
     final start2 = await engine.create(
       worldId: 'w_cangwu',
       identityId: 'id_herb_apprentice',
@@ -320,6 +405,53 @@ Future<void> main() async {
     _check('已结束的局拒绝推进（RUN_ENDED）',
         errs.length == 1 && errs.first.code == 'RUN_ENDED',
         errs.map((e) => e.code).join(','));
+
+    // ---- 黄金回合 10：寿元耗尽 → 终局落库（status=ended、endingId 入头部） ----
+    // meta.age 超限会被 clamp 到 lifespan → age >= lifespan 命中 ending_death；
+    // 气血 > 0 不走濒死豁免，结局完全确定。
+    var draw4 = await engine.draw('w_cangwu');
+    while (!draw4.identities.any((i) => i.id == 'id_herb_apprentice')) {
+      draw4 = await engine.draw('w_cangwu');
+    }
+    fake!.expect(GatewayRole.narrator, '序章：油尽灯枯。');
+    final start4 = await engine.create(
+      worldId: 'w_cangwu',
+      identityId: 'id_herb_apprentice',
+      drawToken: draw4.drawToken,
+    );
+    fake!.expectAll([
+      (GatewayRole.director,
+          _planJson(choices: const [
+        {'intent': '盘膝坐化', 'risk': 'low'},
+        {'intent': '留书后人', 'risk': 'low'},
+        {'intent': '再看一眼人间', 'risk': 'low'},
+      ])),
+      (GatewayRole.narrator, '寿数到了尽头。你放下一切，坐看云卷云舒。'),
+      (GatewayRole.extractor,
+          _extractJson(ops: const [
+        {'op': 'set', 'path': 'meta.age', 'value': 9999},
+      ])),
+    ]);
+    final t10 = await engine.turns
+        .run(start4.runId, expectedTurn: 0, input: ChoiceInput('t0c1'))
+        .toList();
+    final end10 = t10.whereType<TurnEnd>().single;
+    _check('寿元耗尽触发终局',
+        end10.ending != null && end10.ending!.id == 'ending_death',
+        end10.ending?.toJson().toString());
+    final head10 = await RunsDaoAccess.head(db, start4.runId);
+    _check('终局后 run 状态为 ended', head10!.status == 'ended', head10.status);
+    _check('endingId 写入 runs 头部', head10.endingId == 'ending_death',
+        head10.endingId);
+    final archive10 = await engine.archive(start4.runId);
+    _check('档案标题为终局名（不再是仍在路上）',
+        archive10.title == '身死道消', archive10.title);
+    _check('档案 endingId 与头部一致',
+        archive10.endingId == 'ending_death', archive10.endingId);
+    final listed = await engine.listRuns();
+    _check('列表卡携带终局名（endingTitle）',
+        listed.firstWhere((r) => r.id == start4.runId).endingTitle == '身死道消',
+        listed.firstWhere((r) => r.id == start4.runId).endingTitle);
 
     // ---- 用量落库（网关统一记账） ----
     final usageRows = await db.select(db.usageLog).get();

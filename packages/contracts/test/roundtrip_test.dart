@@ -167,4 +167,35 @@ void main() {
       }
     });
   });
+
+  group('LLM 输出容错', () {
+    test('delta ops 混入字符串元素：跳过不炸', () {
+      final delta = StateDelta.fromJson({
+        'ops': [
+          '坏元素',
+          {'op': 'inc', 'path': 'character.stats.vitality', 'by': -3},
+          42,
+        ],
+        'openThreads': ['也是坏的', {'id': 't_1', 'desc': '伏笔'}],
+      });
+      expect(delta.ops.length, 1);
+      expect(delta.ops.first.path, 'character.stats.vitality');
+      expect(delta.openThreads.length, 1);
+      expect(delta.openThreads.first.id, 't_1');
+    });
+
+    test('scenePlan 嵌套数组混入非对象元素：跳过不炸', () {
+      final plan = ScenePlan.fromJson({
+        'beat': 'daily',
+        'npcActions': ['坏', {'npcId': 'n_bai', 'action': '逼近', 'hidden': false}],
+        'nextChoices': ['也坏', {'intent': '周旋', 'risk': 'low'}],
+        'chapterEnd': '不该是字符串',
+      });
+      expect(plan.npcActions.length, 1);
+      expect(plan.npcActions.first.npcId, 'n_bai');
+      expect(plan.nextChoices.length, 1);
+      expect(plan.nextChoices.first.intent, '周旋');
+      expect(plan.chapterEnd, isNull);
+    });
+  });
 }

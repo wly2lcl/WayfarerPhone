@@ -95,6 +95,7 @@ class UsageLog extends Table {
   IntColumn get tokensOut => integer()();
   BoolColumn get estimated => boolean().clientDefault(() => false)();
   IntColumn get ms => integer()();
+  IntColumn get firstByteMs => integer().nullable()();
   BoolColumn get ok => boolean().clientDefault(() => true)();
   IntColumn get createdAt => integer()();
 }
@@ -145,13 +146,20 @@ class AppDb extends _$AppDb {
   AppDb(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
           await m.createAll();
           await createFts(customStatement);
+        },
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            // v2：usage_log 增加首字延迟列（观测 §9 的 p50/p95 首字）
+            await customStatement(
+                'ALTER TABLE usage_log ADD COLUMN first_byte_ms INTEGER NULL');
+          }
         },
         beforeOpen: (details) async {
           // FTS 表在 v1 与低版本重建时兜底创建

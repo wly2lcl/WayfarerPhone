@@ -60,6 +60,63 @@ class _PlayPageState extends ConsumerState<PlayPage> {
     ref.read(playProvider(widget.runId).notifier).submit(input);
   }
 
+  /// 回溯分叉（API 参考 runs.branch）：选历史回合快照，开一条新世界线，旧线原样保留
+  Future<void> _showBranchSheet() async {
+    final engine = ref.read(engineProvider);
+    await showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetCtx) => SafeArea(
+        child: FutureBuilder<List<SnapshotBrief>>(
+          future: engine.listSnapshots(widget.runId),
+          builder: (ctx, snap) {
+            if (!snap.hasData) {
+              return const Padding(
+                padding: EdgeInsets.all(32),
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            final snaps = snap.data!;
+            return ListView(
+              shrinkWrap: true,
+              children: <Widget>[
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(20, 16, 20, 8),
+                  child: Text(
+                    '回溯到哪个节点？新世界线从所选回合开始，旧线原样保留。',
+                    style: TextStyle(fontSize: 13),
+                  ),
+                ),
+                for (final s in snaps)
+                  ListTile(
+                    leading: const Icon(Icons.history),
+                    title: Text(
+                        s.turnNo == 0 ? '开局（序章之前）' : '第 ${s.chapter} 卷 · 回合 ${s.turnNo} 结束后'),
+                    onTap: () async {
+                      try {
+                        final newId = await engine.branch(snapshotId: s.id);
+                        if (!sheetCtx.mounted) return;
+                        Navigator.of(sheetCtx).pop();
+                        if (!mounted) return;
+                        context.push('/play/$newId');
+                      } on EngineException catch (e) {
+                        if (!sheetCtx.mounted) return;
+                        Navigator.of(sheetCtx).pop();
+                        ScaffoldMessenger.of(this.context).showSnackBar(
+                          SnackBar(
+                              content: Text(
+                                  '${engineCodeLabel(e.code)}：${e.message}')),
+                        );
+                      }
+                    },
+                  ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
   String _title(PlayState play) {
     final s = play.state;
     if (s == null) return '游玩';
@@ -105,6 +162,8 @@ class _PlayPageState extends ConsumerState<PlayPage> {
                   context.push('/library');
                 case 'archive':
                   context.push('/archive/${widget.runId}');
+                case 'branch':
+                  _showBranchSheet();
                 case 'home':
                   context.go('/');
               }
@@ -112,6 +171,7 @@ class _PlayPageState extends ConsumerState<PlayPage> {
             itemBuilder: (ctx) => const <PopupMenuItem<String>>[
               PopupMenuItem<String>(value: 'library', child: Text('我的局')),
               PopupMenuItem<String>(value: 'archive', child: Text('人生档案')),
+              PopupMenuItem<String>(value: 'branch', child: Text('回溯分叉')),
               PopupMenuItem<String>(value: 'home', child: Text('返回书架')),
             ],
           ),

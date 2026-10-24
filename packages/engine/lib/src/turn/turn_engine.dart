@@ -41,7 +41,7 @@ class TurnEngine {
       if (!controller.isClosed) {
         controller.add(TurnError(
           e is EngineException ? e.code.wireName : EngineCode.stateInvalid.wireName,
-          e.toString(),
+          e is EngineException ? e.message : e.toString(),
           true,
         ));
       }
@@ -131,12 +131,13 @@ class TurnEngine {
       }
       intent = intent.isEmpty ? '推进这件事' : intent;
     } else if (input is FreeTextInput) {
-      final classified = await _classify(bible, state, input.text);
+      final classified = await _classify(bible, state, input.text, runId);
       kind = classified.$1;
       intent = classified.$2;
       emit(Classification(kind, intent));
       if (kind == IntentKind.query || kind == IntentKind.meta) {
-        await _answerQuery(bible, identity, state, input.text, narrationHistory, emit);
+        await _answerQuery(
+            bible, identity, state, input.text, narrationHistory, emit, runId);
         return;
       }
     }
@@ -170,7 +171,7 @@ class TurnEngine {
       book.firedSeeds.addAll(seeds.map((s) => s.id));
     }
 
-    final turnsInChapter = state.meta.turnNo + 1;
+    final turnsInChapter = newTurnNo - book.chapterStartTurn;
     final canTurningPoint =
         newTurnNo - book.lastTurningTurn >= 5 && newTurnNo - book.lastTurningTurn <= 8;
     final canChapterEnd = turnsInChapter >= 32 && state.meta.chapter >= 1;
@@ -196,6 +197,8 @@ class TurnEngine {
     final directorRes = await gateway.complete(GatewayRequest(
       role: GatewayRole.director,
       system: systemPrompt,
+      runId: runId,
+      turnNo: state.meta.turnNo,
       user: assembleUser(
         sections: [recentSection(narrationHistory), directorPrompt],
         systemTokens: estTokens(systemPrompt),
@@ -205,6 +208,15 @@ class TurnEngine {
       maxTokens: 800,
     ));
     final plan = parseScenePlan(directorRes.text);
+    // 卷末兜底：导演连续多回合不收卷时强制结束，保证「正常结束」可达。
+    // 32 是卷末门槛（内容包 §7），35 给导演 3 回合的收束余量。
+    if (canChapterEnd &&
+        plan.chapterEnd == null &&
+        turnsInChapter >= 35) {
+      plan.beat = Beat.chapterEnd;
+      plan.summary = '卷末：收束本卷全部主线，写突破筑基的判定与本卷终局';
+      plan.chapterEnd = ChapterEnd(reason: '卷末回合已至，本卷主线收束');
+    }
     if (plan.beat == Beat.turningPoint && canTurningPoint) {
       book.lastTurningTurn = newTurnNo;
     }
@@ -225,6 +237,8 @@ class TurnEngine {
       await for (final delta in gateway.stream(GatewayRequest(
         role: GatewayRole.narrator,
         system: systemPrompt,
+        runId: runId,
+        turnNo: state.meta.turnNo,
         user: assembleUser(
           sections: [
             recentSection(narrationHistory),
@@ -265,6 +279,8 @@ class TurnEngine {
       final extractorRes = await gateway.complete(GatewayRequest(
         role: GatewayRole.extractor,
         system: systemPrompt,
+        runId: runId,
+        turnNo: state.meta.turnNo,
         user: assembleUser(
           sections: [
             buildExtractorPrompt(
@@ -365,11 +381,19 @@ class TurnEngine {
     var chapter = state.meta.chapter;
     String? compactJson;
     var chapterEndNow = false;
+    var endedChapter = 0;
+    var chapterEndReason = '';
+    var chapterEndSummary = '';
     if (plan.chapterEnd != null && canChapterEnd) {
       chapterEndNow = true;
+      endedChapter = state.meta.chapter;
+      chapterEndReason = plan.chapterEnd!.reason;
       chapter = state.meta.chapter + 1;
       compactJson = await _compact(bible, identity, state, runId);
+      chapterEndSummary =
+          asSOr((jsonDecode(compactJson) as Map)['volumeSummary'], '');
       state.meta.chapter = chapter;
+      book.chapterStartTurn = newTurnNo;
     }
     state.flags['pendingRepair'] = false;
 
@@ -406,7 +430,15 @@ class TurnEngine {
         },
       },
       if (chapterEndNow && compactJson != null)
-        {'type': 'compact', 'payload': {'memory': jsonDecode(compactJson)}},
+        {
+          'type': 'compact',
+          'payload': {
+            'memory': jsonDecode(compactJson),
+            'chapter': endedChapter,
+            'reason': chapterEndReason,
+            'summary': chapterEndSummary,
+          },
+        },
       if (ending != null) {'type': 'system', 'payload': {'ending': ending.toJson()}},
       {
         'type': 'system',
@@ -425,6 +457,7 @@ class TurnEngine {
         stateAfter: state,
         chapter: chapter,
         memory: book.encode(compactJson),
+        ending: ending,
         eventPayloads: events,
       );
     } catch (e) {
@@ -432,6 +465,10 @@ class TurnEngine {
       return;
     }
 
+    if (chapterEndNow) {
+      emit(ChapterCompleted(endedChapter, chapterEndReason,
+          summary: chapterEndSummary));
+    }
     if (choices.isNotEmpty) emit(ChoicesAvailable(choices));
     emit(StatePatch(patchForEvent));
     emit(TurnEnd(newTurnNo, snapshotId, ending));
@@ -441,6 +478,7 @@ class TurnEngine {
     WorldBible bible,
     RunState state,
     String text,
+    String runId,
   ) async {
     try {
       final system =
@@ -448,6 +486,8 @@ class TurnEngine {
       final res = await gateway.complete(GatewayRequest(
         role: GatewayRole.classifier,
         system: system,
+        runId: runId,
+        turnNo: state.meta.turnNo,
         user: assembleUser(sections: [stateSummary(state)], systemTokens: estTokens(system)),
         jsonMode: true,
         temperature: 0.1,
@@ -471,6 +511,7 @@ class TurnEngine {
     String question,
     List<Map<String, Object?>> narrationHistory,
     void Function(TurnEvent) emit,
+    String runId,
   ) async {
     final system =
         '${ironLawSection(bible)}\n\n${buildCompanionPrompt(knowledge: state.knowledge.join('；'), stateSummary: stateSummary(state), recentTurns: narrationHistory.map((e) => (e['narration'] ?? '').toString()).join('\n'), question: question)}';
@@ -479,6 +520,8 @@ class TurnEngine {
         role: GatewayRole.companion,
         system: system,
         user: question,
+        runId: runId,
+        turnNo: state.meta.turnNo,
         temperature: 0.6,
         maxTokens: 400,
       ))) {
@@ -514,6 +557,8 @@ class TurnEngine {
       final res = await gateway.complete(GatewayRequest(
         role: GatewayRole.compress,
         system: system,
+        runId: runId,
+        turnNo: state.meta.turnNo,
         user: assembleUser(
           sections: [
             buildCompactPrompt(

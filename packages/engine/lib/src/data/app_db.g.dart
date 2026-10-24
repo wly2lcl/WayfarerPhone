@@ -2957,6 +2957,17 @@ class $UsageLogTable extends UsageLog
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _firstByteMsMeta = const VerificationMeta(
+    'firstByteMs',
+  );
+  @override
+  late final GeneratedColumn<int> firstByteMs = GeneratedColumn<int>(
+    'first_byte_ms',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _okMeta = const VerificationMeta('ok');
   @override
   late final GeneratedColumn<bool> ok = GeneratedColumn<bool>(
@@ -2992,6 +3003,7 @@ class $UsageLogTable extends UsageLog
     tokensOut,
     estimated,
     ms,
+    firstByteMs,
     ok,
     createdAt,
   ];
@@ -3065,6 +3077,15 @@ class $UsageLogTable extends UsageLog
     } else if (isInserting) {
       context.missing(_msMeta);
     }
+    if (data.containsKey('first_byte_ms')) {
+      context.handle(
+        _firstByteMsMeta,
+        firstByteMs.isAcceptableOrUnknown(
+          data['first_byte_ms']!,
+          _firstByteMsMeta,
+        ),
+      );
+    }
     if (data.containsKey('ok')) {
       context.handle(_okMeta, ok.isAcceptableOrUnknown(data['ok']!, _okMeta));
     }
@@ -3121,6 +3142,10 @@ class $UsageLogTable extends UsageLog
         DriftSqlType.int,
         data['${effectivePrefix}ms'],
       )!,
+      firstByteMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}first_byte_ms'],
+      ),
       ok: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}ok'],
@@ -3148,6 +3173,7 @@ class UsageLogData extends DataClass implements Insertable<UsageLogData> {
   final int tokensOut;
   final bool estimated;
   final int ms;
+  final int? firstByteMs;
   final bool ok;
   final int createdAt;
   const UsageLogData({
@@ -3160,6 +3186,7 @@ class UsageLogData extends DataClass implements Insertable<UsageLogData> {
     required this.tokensOut,
     required this.estimated,
     required this.ms,
+    this.firstByteMs,
     required this.ok,
     required this.createdAt,
   });
@@ -3179,6 +3206,9 @@ class UsageLogData extends DataClass implements Insertable<UsageLogData> {
     map['tokens_out'] = Variable<int>(tokensOut);
     map['estimated'] = Variable<bool>(estimated);
     map['ms'] = Variable<int>(ms);
+    if (!nullToAbsent || firstByteMs != null) {
+      map['first_byte_ms'] = Variable<int>(firstByteMs);
+    }
     map['ok'] = Variable<bool>(ok);
     map['created_at'] = Variable<int>(createdAt);
     return map;
@@ -3199,6 +3229,9 @@ class UsageLogData extends DataClass implements Insertable<UsageLogData> {
       tokensOut: Value(tokensOut),
       estimated: Value(estimated),
       ms: Value(ms),
+      firstByteMs: firstByteMs == null && nullToAbsent
+          ? const Value.absent()
+          : Value(firstByteMs),
       ok: Value(ok),
       createdAt: Value(createdAt),
     );
@@ -3219,6 +3252,7 @@ class UsageLogData extends DataClass implements Insertable<UsageLogData> {
       tokensOut: serializer.fromJson<int>(json['tokensOut']),
       estimated: serializer.fromJson<bool>(json['estimated']),
       ms: serializer.fromJson<int>(json['ms']),
+      firstByteMs: serializer.fromJson<int?>(json['firstByteMs']),
       ok: serializer.fromJson<bool>(json['ok']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
     );
@@ -3236,6 +3270,7 @@ class UsageLogData extends DataClass implements Insertable<UsageLogData> {
       'tokensOut': serializer.toJson<int>(tokensOut),
       'estimated': serializer.toJson<bool>(estimated),
       'ms': serializer.toJson<int>(ms),
+      'firstByteMs': serializer.toJson<int?>(firstByteMs),
       'ok': serializer.toJson<bool>(ok),
       'createdAt': serializer.toJson<int>(createdAt),
     };
@@ -3251,6 +3286,7 @@ class UsageLogData extends DataClass implements Insertable<UsageLogData> {
     int? tokensOut,
     bool? estimated,
     int? ms,
+    Value<int?> firstByteMs = const Value.absent(),
     bool? ok,
     int? createdAt,
   }) => UsageLogData(
@@ -3263,6 +3299,7 @@ class UsageLogData extends DataClass implements Insertable<UsageLogData> {
     tokensOut: tokensOut ?? this.tokensOut,
     estimated: estimated ?? this.estimated,
     ms: ms ?? this.ms,
+    firstByteMs: firstByteMs.present ? firstByteMs.value : this.firstByteMs,
     ok: ok ?? this.ok,
     createdAt: createdAt ?? this.createdAt,
   );
@@ -3277,6 +3314,9 @@ class UsageLogData extends DataClass implements Insertable<UsageLogData> {
       tokensOut: data.tokensOut.present ? data.tokensOut.value : this.tokensOut,
       estimated: data.estimated.present ? data.estimated.value : this.estimated,
       ms: data.ms.present ? data.ms.value : this.ms,
+      firstByteMs: data.firstByteMs.present
+          ? data.firstByteMs.value
+          : this.firstByteMs,
       ok: data.ok.present ? data.ok.value : this.ok,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
@@ -3294,6 +3334,7 @@ class UsageLogData extends DataClass implements Insertable<UsageLogData> {
           ..write('tokensOut: $tokensOut, ')
           ..write('estimated: $estimated, ')
           ..write('ms: $ms, ')
+          ..write('firstByteMs: $firstByteMs, ')
           ..write('ok: $ok, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
@@ -3311,6 +3352,7 @@ class UsageLogData extends DataClass implements Insertable<UsageLogData> {
     tokensOut,
     estimated,
     ms,
+    firstByteMs,
     ok,
     createdAt,
   );
@@ -3327,6 +3369,7 @@ class UsageLogData extends DataClass implements Insertable<UsageLogData> {
           other.tokensOut == this.tokensOut &&
           other.estimated == this.estimated &&
           other.ms == this.ms &&
+          other.firstByteMs == this.firstByteMs &&
           other.ok == this.ok &&
           other.createdAt == this.createdAt);
 }
@@ -3341,6 +3384,7 @@ class UsageLogCompanion extends UpdateCompanion<UsageLogData> {
   final Value<int> tokensOut;
   final Value<bool> estimated;
   final Value<int> ms;
+  final Value<int?> firstByteMs;
   final Value<bool> ok;
   final Value<int> createdAt;
   const UsageLogCompanion({
@@ -3353,6 +3397,7 @@ class UsageLogCompanion extends UpdateCompanion<UsageLogData> {
     this.tokensOut = const Value.absent(),
     this.estimated = const Value.absent(),
     this.ms = const Value.absent(),
+    this.firstByteMs = const Value.absent(),
     this.ok = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
@@ -3366,6 +3411,7 @@ class UsageLogCompanion extends UpdateCompanion<UsageLogData> {
     required int tokensOut,
     this.estimated = const Value.absent(),
     required int ms,
+    this.firstByteMs = const Value.absent(),
     this.ok = const Value.absent(),
     required int createdAt,
   }) : role = Value(role),
@@ -3384,6 +3430,7 @@ class UsageLogCompanion extends UpdateCompanion<UsageLogData> {
     Expression<int>? tokensOut,
     Expression<bool>? estimated,
     Expression<int>? ms,
+    Expression<int>? firstByteMs,
     Expression<bool>? ok,
     Expression<int>? createdAt,
   }) {
@@ -3397,6 +3444,7 @@ class UsageLogCompanion extends UpdateCompanion<UsageLogData> {
       if (tokensOut != null) 'tokens_out': tokensOut,
       if (estimated != null) 'estimated': estimated,
       if (ms != null) 'ms': ms,
+      if (firstByteMs != null) 'first_byte_ms': firstByteMs,
       if (ok != null) 'ok': ok,
       if (createdAt != null) 'created_at': createdAt,
     });
@@ -3412,6 +3460,7 @@ class UsageLogCompanion extends UpdateCompanion<UsageLogData> {
     Value<int>? tokensOut,
     Value<bool>? estimated,
     Value<int>? ms,
+    Value<int?>? firstByteMs,
     Value<bool>? ok,
     Value<int>? createdAt,
   }) {
@@ -3425,6 +3474,7 @@ class UsageLogCompanion extends UpdateCompanion<UsageLogData> {
       tokensOut: tokensOut ?? this.tokensOut,
       estimated: estimated ?? this.estimated,
       ms: ms ?? this.ms,
+      firstByteMs: firstByteMs ?? this.firstByteMs,
       ok: ok ?? this.ok,
       createdAt: createdAt ?? this.createdAt,
     );
@@ -3460,6 +3510,9 @@ class UsageLogCompanion extends UpdateCompanion<UsageLogData> {
     if (ms.present) {
       map['ms'] = Variable<int>(ms.value);
     }
+    if (firstByteMs.present) {
+      map['first_byte_ms'] = Variable<int>(firstByteMs.value);
+    }
     if (ok.present) {
       map['ok'] = Variable<bool>(ok.value);
     }
@@ -3481,6 +3534,7 @@ class UsageLogCompanion extends UpdateCompanion<UsageLogData> {
           ..write('tokensOut: $tokensOut, ')
           ..write('estimated: $estimated, ')
           ..write('ms: $ms, ')
+          ..write('firstByteMs: $firstByteMs, ')
           ..write('ok: $ok, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
@@ -6007,6 +6061,7 @@ typedef $$UsageLogTableCreateCompanionBuilder =
       required int tokensOut,
       Value<bool> estimated,
       required int ms,
+      Value<int?> firstByteMs,
       Value<bool> ok,
       required int createdAt,
     });
@@ -6021,6 +6076,7 @@ typedef $$UsageLogTableUpdateCompanionBuilder =
       Value<int> tokensOut,
       Value<bool> estimated,
       Value<int> ms,
+      Value<int?> firstByteMs,
       Value<bool> ok,
       Value<int> createdAt,
     });
@@ -6075,6 +6131,11 @@ class $$UsageLogTableFilterComposer extends Composer<_$AppDb, $UsageLogTable> {
 
   ColumnFilters<int> get ms => $composableBuilder(
     column: $table.ms,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get firstByteMs => $composableBuilder(
+    column: $table.firstByteMs,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6143,6 +6204,11 @@ class $$UsageLogTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get firstByteMs => $composableBuilder(
+    column: $table.firstByteMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get ok => $composableBuilder(
     column: $table.ok,
     builder: (column) => ColumnOrderings(column),
@@ -6190,6 +6256,11 @@ class $$UsageLogTableAnnotationComposer
   GeneratedColumn<int> get ms =>
       $composableBuilder(column: $table.ms, builder: (column) => column);
 
+  GeneratedColumn<int> get firstByteMs => $composableBuilder(
+    column: $table.firstByteMs,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<bool> get ok =>
       $composableBuilder(column: $table.ok, builder: (column) => column);
 
@@ -6234,6 +6305,7 @@ class $$UsageLogTableTableManager
                 Value<int> tokensOut = const Value.absent(),
                 Value<bool> estimated = const Value.absent(),
                 Value<int> ms = const Value.absent(),
+                Value<int?> firstByteMs = const Value.absent(),
                 Value<bool> ok = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
               }) => UsageLogCompanion(
@@ -6246,6 +6318,7 @@ class $$UsageLogTableTableManager
                 tokensOut: tokensOut,
                 estimated: estimated,
                 ms: ms,
+                firstByteMs: firstByteMs,
                 ok: ok,
                 createdAt: createdAt,
               ),
@@ -6260,6 +6333,7 @@ class $$UsageLogTableTableManager
                 required int tokensOut,
                 Value<bool> estimated = const Value.absent(),
                 required int ms,
+                Value<int?> firstByteMs = const Value.absent(),
                 Value<bool> ok = const Value.absent(),
                 required int createdAt,
               }) => UsageLogCompanion.insert(
@@ -6272,6 +6346,7 @@ class $$UsageLogTableTableManager
                 tokensOut: tokensOut,
                 estimated: estimated,
                 ms: ms,
+                firstByteMs: firstByteMs,
                 ok: ok,
                 createdAt: createdAt,
               ),

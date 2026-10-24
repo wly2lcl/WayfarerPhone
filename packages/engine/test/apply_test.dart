@@ -267,6 +267,19 @@ void main() {
       apply(s, [Op(op: 'remove', path: 'character.conditions', value: 'c_poi')]);
       expect(s.character.conditions, isEmpty);
     });
+
+    test('模型偶发把对象 value 写成字符串：拒绝而非抛类型异常', () {
+      final s = makeState();
+      final r = apply(s, [
+        Op(op: 'push', path: 'inventory', value: '玉牌一块'),
+        Op(op: 'push', path: 'threads', value: '玉牌主人的下落'),
+        Op(op: 'push', path: 'character.conditions', value: '轻伤'),
+      ]);
+      expect(r.rejected, hasLength(3));
+      expect(s.inventory, isEmpty);
+      expect(s.threads, isEmpty);
+      expect(s.character.conditions, isEmpty);
+    });
   });
 
   group('realm 只升不降', () {

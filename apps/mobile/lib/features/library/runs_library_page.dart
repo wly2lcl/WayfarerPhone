@@ -8,8 +8,9 @@ import '../../core/ui/paper.dart';
 import '../worlds/worlds_provider.dart';
 
 /// 「我的局」：本地局列表，可继续游玩或查看人生档案
+/// autoDispose：分叉/新开局后重进页面时重新查询，避免旧列表缓存
 final runsLibraryProvider =
-    FutureProvider((ref) => ref.watch(engineProvider).listRuns());
+    FutureProvider.autoDispose((ref) => ref.watch(engineProvider).listRuns());
 
 class RunsLibraryPage extends ConsumerWidget {
   const RunsLibraryPage({super.key});
@@ -98,6 +99,7 @@ class RunsLibraryPage extends ConsumerWidget {
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
+                                  '${run.endingTitle != null ? '${run.endingTitle} · ' : ''}'
                                   '第${run.chapter}卷 · 第${run.turnNo}回合 · v${run.worldVersion} 世界',
                                   style: TextStyle(
                                       fontSize: 12,

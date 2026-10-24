@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:contracts/contracts.dart';
+import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:engine/engine.dart';
 import 'package:test/test.dart';
 
@@ -92,7 +93,7 @@ void main() {
       expect(mem, '压缩后的记忆');
     });
 
-    test('turnEnd 带 ending → run 状态翻为 ended，且 headSnapshotId 指向新快照', () async {
+    test('commitTurn 带 ending → run 状态翻为 ended 且 endingId 落库', () async {
       final s = await persistedState();
       await dao.createRun(
         runId: 'r_dbtest',
@@ -106,11 +107,12 @@ void main() {
         stateAfter: s,
         chapter: 1,
         memory: null,
+        ending: EndingRef(
+            id: 'ending_fall', type: 'fall', title: '走火入魔'),
         eventPayloads: [
           {
-            'type': 'turnEnd',
+            'type': 'system',
             'payload': {
-              'turn': 3,
               'ending': {'id': 'ending_fall', 'type': 'fall', 'title': '走火入魔'},
             },
             'fts': null,
@@ -119,7 +121,7 @@ void main() {
       );
       final head = await dao.loadHead('r_dbtest');
       expect(head!.status, 'ended');
-      expect(head.endingId, isNull); // ending 记在事件里，头部由引擎另行收口
+      expect(head.endingId, 'ending_fall');
     });
 
     test('loadState / loadHead 对不存在的 run 返回 null', () async {
@@ -137,7 +139,8 @@ void main() {
     test('关闭后重开，数据保留且 schemaVersion 不变', () async {
       final path = '${tmp.path}/app.db';
       final db1 = openDbAt(path);
-      expect(db1.schemaVersion, 1);
+      final expectedVersion = db1.schemaVersion;
+      expect(expectedVersion, greaterThanOrEqualTo(2));
       final dao1 = RunsDao(db1);
       final s = await persistedState();
       await dao1.createRun(
@@ -150,7 +153,7 @@ void main() {
       await db1.close();
 
       final db2 = openDbAt(path);
-      expect(db2.schemaVersion, 1);
+      expect(db2.schemaVersion, expectedVersion);
       final loaded = await RunsDao(db2).loadState('r_persist');
       expect(loaded, isNotNull);
       expect(loaded!.character.name, s.character.name);
@@ -251,6 +254,101 @@ void main() {
       expect(s.narrativeModel, 'test-model');
       expect(s.smallModel, 'test-model');
       await e2.close();
+    });
+
+    test('usageStats：分位数、失败数与单回合平均 token', () async {
+      final e = await Engine.open(
+        dbPath: '${tmp.path}/app.db',
+        keyStore: InMemoryKeyStore(),
+        builtinSeed: buildSeed(),
+      );
+      Future<void> put({
+        String? runId,
+        int? turnNo,
+        required int tokensIn,
+        required int tokensOut,
+        required int ms,
+        int? firstByteMs,
+        bool ok = true,
+      }) async {
+        await e.db.into(e.db.usageLog).insert(UsageLogCompanion.insert(
+              runId: Value(runId),
+              turnNo: Value(turnNo),
+              role: 'narrator',
+              model: 'm',
+              tokensIn: tokensIn,
+              tokensOut: tokensOut,
+              ms: ms,
+              firstByteMs: Value(firstByteMs),
+              ok: Value(ok),
+              createdAt: DateTime.now().millisecondsSinceEpoch,
+            ));
+      }
+
+      await put(runId: 'r_a', turnNo: 1, tokensIn: 100, tokensOut: 200, ms: 900, firstByteMs: 100);
+      await put(runId: 'r_a', turnNo: 2, tokensIn: 100, tokensOut: 300, ms: 1900, firstByteMs: 200);
+      await put(runId: 'r_a', turnNo: 3, tokensIn: 50, tokensOut: 150, ms: 150);
+      await put(tokensIn: 0, tokensOut: 0, ms: 60000, ok: false);
+
+      final st = await e.usageStats(days: 30);
+      expect(st.requests, 4);
+      expect(st.failures, 1);
+      expect(st.p50Ms, 150); // 样本 [100, 200, 150] 中位
+      expect(st.p95Ms, 200);
+      expect(st.tokensIn, 250);
+      expect(st.tokensOut, 650);
+      expect(st.turns, 3);
+      expect(st.avgTokensPerTurn, 300); // (250+650)/3
+      await e.close();
+    });
+
+    test('listSnapshots 与 branch：从历史回合快照开新世界线', () async {
+      final e = await Engine.open(
+        dbPath: '${tmp.path}/app.db',
+        keyStore: InMemoryKeyStore(),
+        builtinSeed: buildSeed(),
+      );
+      final dao = RunsDao(e.db);
+      final s = await persistedState();
+      await dao.createRun(
+        runId: 'r_branch',
+        worldId: 'w_cangwu',
+        worldVersion: 1,
+        identityId: 'id_herb_apprentice',
+        initialState: s,
+      );
+      final s2 = (await persistedState())..meta.turnNo = 1;
+      final s3 = (await persistedState())
+        ..meta.turnNo = 2
+        ..meta.chapter = 1;
+      await dao.commitTurn(
+        runId: 'r_branch',
+        stateAfter: s2,
+        chapter: 1,
+        memory: null,
+        eventPayloads: const [],
+      );
+      await dao.commitTurn(
+        runId: 'r_branch',
+        stateAfter: s3,
+        chapter: 1,
+        memory: null,
+        eventPayloads: const [],
+      );
+
+      final snaps = await e.listSnapshots('r_branch');
+      expect(snaps.map((s) => s.turnNo), [3, 2, 1]); // 初始快照 + 两个回合，新→旧
+
+      final newRunId = await e.branch(snapshotId: snaps.last.id);
+      expect(newRunId, isNot('r_branch'));
+      final st = await RunsDao(e.db).loadState(newRunId);
+      expect(st, isNotNull);
+      expect(st!.meta.turnNo, 1);
+      expect(st.meta.chapter, 1);
+      final head = await RunsDao(e.db).loadHead(newRunId);
+      expect(head!.identityId, 'id_herb_apprentice');
+      expect(head.worldId, 'w_cangwu');
+      await e.close();
     });
   });
 }

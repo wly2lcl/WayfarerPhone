@@ -15,6 +15,9 @@ class RunHead {
   final int turnNo;
   final String? headSnapshotId;
   final String? endingId;
+
+  /// 仅 listRuns 填充：按世界版本 bible 解析出的终局名（展示用）
+  final String? endingTitle;
   final RunState? state;
 
   RunHead({
@@ -27,8 +30,18 @@ class RunHead {
     required this.turnNo,
     this.headSnapshotId,
     this.endingId,
+    this.endingTitle,
     this.state,
   });
+}
+
+/// 世界线分叉候选：一个历史回合快照（API 参考 runs.branch）
+class SnapshotBrief {
+  final String id;
+  final int turnNo;
+  final int chapter;
+
+  SnapshotBrief({required this.id, required this.turnNo, required this.chapter});
 }
 
 class RunsDao {
@@ -75,6 +88,20 @@ class RunsDao {
     return snap?.memory;
   }
 
+  /// 最近的回合快照（分叉候选），新→旧
+  Future<List<SnapshotBrief>> listSnapshots(String runId,
+      {int limit = 12}) async {
+    final rows = await (db.select(db.runSnapshots)
+          ..where((s) => s.runId.equals(runId))
+          ..orderBy([(s) => OrderingTerm.desc(s.turnNo)])
+          ..limit(limit))
+        .get();
+    return rows
+        .map((s) =>
+            SnapshotBrief(id: s.id, turnNo: s.turnNo, chapter: s.chapter))
+        .toList();
+  }
+
   Future<int> nextSeq(String runId) async {
     final row = await db.customSelect(
       'SELECT COALESCE(MAX(seq), 0) AS s FROM run_events WHERE run_id = ?',
@@ -90,6 +117,7 @@ class RunsDao {
     required int chapter,
     required String? memory,
     String? parentSnapshotId,
+    EndingRef? ending,
     required List<Map<String, Object?>> eventPayloads,
   }) async {
     final turnNo = stateAfter.meta.turnNo;
@@ -130,10 +158,8 @@ class RunsDao {
           turnNo: Value(turnNo),
           chapter: Value(chapter),
           headSnapshotId: Value(snapshotId),
-          status: Value(
-              eventPayloads.any((e) => e['type'] == 'turnEnd' && (e['payload'] as Map)['ending'] != null)
-                  ? 'ended'
-                  : 'active'),
+          status: Value(ending != null ? 'ended' : 'active'),
+          endingId: ending == null ? const Value.absent() : Value(ending.id),
           updatedAt: Value(now),
         ),
       );

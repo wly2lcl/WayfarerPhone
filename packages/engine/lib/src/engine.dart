@@ -10,6 +10,7 @@ import 'errors.dart';
 import 'llm/gateway.dart';
 import 'llm/settings.dart';
 import 'prompts/roles.dart';
+import 'usage.dart';
 import 'turn/context.dart';
 import 'turn/queue.dart';
 import 'turn/turn_engine.dart';
@@ -88,6 +89,21 @@ class RunView {
   RunView({required this.head, this.state, required this.pendingChoices});
 }
 
+class NarrationEntry {
+  final int turnNo;
+  final String text;
+  final bool isMarker;
+
+  /// 仅卷末标记携带：压缩生成的卷记小结
+  final String summary;
+  NarrationEntry({
+    required this.turnNo,
+    required this.text,
+    this.isMarker = false,
+    this.summary = '',
+  });
+}
+
 class Archive {
   final String endingId;
   final String title;
@@ -156,17 +172,54 @@ class Engine {
   static UsageSink _persistingSink(AppDb db, void Function(UsageRecord)? user) {
     return (UsageRecord r) {
       db.into(db.usageLog).insert(UsageLogCompanion.insert(
+            runId: Value(r.runId),
+            turnNo: Value(r.turnNo),
             role: r.role.name,
             model: r.model,
             tokensIn: r.tokensIn,
             tokensOut: r.tokensOut,
             estimated: Value(r.estimated),
             ms: r.ms,
+            firstByteMs: Value(r.firstByteMs),
             ok: Value(r.ok),
             createdAt: DateTime.now().millisecondsSinceEpoch,
           ));
       user?.call(r);
     };
+  }
+
+  /// 近 N 天用量汇总（观测 §9），设置页展示
+  Future<UsageStats> usageStats({int days = 30}) async {
+    final since =
+        DateTime.now().millisecondsSinceEpoch - days * 86400000;
+    final rows = await (db.select(db.usageLog)
+          ..where((u) => u.createdAt.isBiggerOrEqualValue(since)))
+        .get();
+    final okRows = rows.where((r) => r.ok).toList();
+    final latencies =
+        okRows.map((r) => r.firstByteMs ?? r.ms).toList()..sort();
+    int? pct(double p) => latencies.isEmpty
+        ? null
+        : latencies[(p * (latencies.length - 1)).round()];
+    final turnKeys = rows
+        .where((r) => r.runId != null && r.turnNo != null)
+        .map((r) => '${r.runId}:${r.turnNo}')
+        .toSet();
+    final tokensIn = okRows.fold<int>(0, (a, r) => a + r.tokensIn);
+    final tokensOut = okRows.fold<int>(0, (a, r) => a + r.tokensOut);
+    return UsageStats(
+      days: days,
+      requests: rows.length,
+      failures: rows.length - okRows.length,
+      p50Ms: pct(0.5),
+      p95Ms: pct(0.95),
+      tokensIn: tokensIn,
+      tokensOut: tokensOut,
+      turns: turnKeys.length,
+      avgTokensPerTurn: turnKeys.isEmpty
+          ? 0
+          : ((tokensIn + tokensOut) / turnKeys.length).round(),
+    );
   }
 
   ModelSettings get modelSettings => _holder.current;
@@ -442,6 +495,33 @@ class Engine {
     final rows = await (db.select(db.runs)
           ..orderBy([(r) => OrderingTerm.desc(r.updatedAt)]))
         .get();
+    final versions = await db.select(db.worldVersions).get();
+    final bibles = <String, WorldBible?>{};
+    WorldBible? bibleOf(String worldId, int version) {
+      final key = '$worldId@$version';
+      if (!bibles.containsKey(key)) {
+        WorldBible? found;
+        for (final v in versions) {
+          if (v.worldId == worldId && v.version == version) {
+            found = WorldBible.fromJson(jsonDecode(v.bible));
+            break;
+          }
+        }
+        bibles[key] = found;
+      }
+      return bibles[key];
+    }
+
+    String? titleOf(String worldId, int version, String? endingId) {
+      if (endingId == null) return null;
+      final bible = bibleOf(worldId, version);
+      if (bible == null) return null;
+      for (final e in bible.endgame) {
+        if (e.id == endingId) return e.title;
+      }
+      return null;
+    }
+
     return rows
         .map((r) => RunHead(
               id: r.id,
@@ -453,6 +533,7 @@ class Engine {
               turnNo: r.turnNo,
               headSnapshotId: r.headSnapshotId,
               endingId: r.endingId,
+              endingTitle: titleOf(r.worldId, r.worldVersion, r.endingId),
             ))
         .toList();
   }
@@ -463,6 +544,34 @@ class Engine {
     final state = await RunsDao(db).loadState(runId);
     final choices = await _pendingChoices(runId);
     return RunView(head: head, state: state, pendingChoices: choices);
+  }
+
+  /// 历史叙事正文（序章 + 各回合 + 卷末分幅，seq 升序），离线可读
+  Future<List<NarrationEntry>> listNarration(String runId) async {
+    final rows = await (db.select(db.runEvents)
+          ..where((e) =>
+              e.runId.equals(runId) &
+              e.type.isIn(['narration', 'compact']))
+          ..orderBy([(e) => OrderingTerm.asc(e.seq)]))
+        .get();
+    return [
+      for (final r in rows)
+        if (r.type == 'compact')
+          () {
+            final payload = rawMap(jsonDecode(r.payload));
+            return NarrationEntry(
+              turnNo: r.turnNo,
+              text: '第 ${payload['chapter'] ?? '?'} 卷 · 完',
+              isMarker: true,
+              summary: asSOr(payload['summary'], ''),
+            );
+          }()
+        else
+          NarrationEntry(
+            turnNo: r.turnNo,
+            text: rawMap(jsonDecode(r.payload))['text']?.toString() ?? '',
+          ),
+    ];
   }
 
   Future<List<Choice>> _pendingChoices(String runId) async {
@@ -535,6 +644,10 @@ class Engine {
     );
     return newId;
   }
+
+  /// 本局最近的回合快照（分叉候选，新→旧）
+  Future<List<SnapshotBrief>> listSnapshots(String runId, {int limit = 12}) =>
+      RunsDao(db).listSnapshots(runId, limit: limit);
 
   Future<String> _worldIdOf(String runId) async =>
       (await RunsDao(db).loadHead(runId))?.worldId ?? 'w_cangwu';

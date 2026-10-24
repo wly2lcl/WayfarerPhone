@@ -9,6 +9,10 @@ bool asBOr(Object? v, bool d) => v is bool ? v : d;
 List<T> asList<T>(Object? v, T Function(Object?) f) =>
     (v as List?)?.map(f).toList() ?? <T>[];
 
+/// 解析模型输出专用：数组里的非对象元素（模型偶发输出字符串）直接跳过
+List<T> asListOfMaps<T>(Object? v, T Function(Map<String, Object?>) f) =>
+    (v as List?)?.whereType<Map>().map((e) => f(rawMap(e))).toList() ?? <T>[];
+
 Map<String, T> asMap<T>(Object? v, T Function(Object?) f) => (v as Map?)
         ?.map((k, e) => MapEntry(k, f(e))) ??
     <String, T>{};

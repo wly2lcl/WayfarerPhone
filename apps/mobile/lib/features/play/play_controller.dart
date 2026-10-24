@@ -44,6 +44,39 @@ class PlayController extends Notifier<PlayState> {
         }
         if (start.choices.isNotEmpty) choices = start.choices;
       } else if (view.head.turnNo > 0) {
+        // 重新进入：加载历史正文（离线也能读回全部叙事）
+        final history = await _engine.listNarration(runId);
+        var lastTurn = -1;
+        for (final n in history) {
+          if (n.isMarker) {
+            blocks.add(NarrationBlock(
+              turn: n.turnNo,
+              text: '—— ${n.text} ——',
+              complete: true,
+              hint: true,
+            ));
+            if (n.summary.isNotEmpty) {
+              blocks.add(NarrationBlock(
+                turn: n.turnNo,
+                text: '卷记：${n.summary}',
+                complete: true,
+                hint: true,
+              ));
+            }
+            continue;
+          }
+          if (n.text.isEmpty) continue;
+          if (lastTurn >= 0 && n.turnNo != lastTurn) {
+            blocks.add(NarrationBlock(
+              turn: n.turnNo,
+              text: '—— 第 ${n.turnNo} 回合 ——',
+              complete: true,
+              hint: true,
+            ));
+          }
+          lastTurn = n.turnNo;
+          blocks.add(NarrationBlock(turn: n.turnNo, text: n.text, complete: true));
+        }
         blocks.add(NarrationBlock(
           turn: view.head.turnNo,
           text: '—— 回到第 ${view.head.turnNo} 回合 ——',
@@ -170,6 +203,23 @@ class PlayController extends Notifier<PlayState> {
           if (!blocks[i].complete && !blocks[i].hint) {
             blocks[i] = blocks[i].completed();
           }
+        }
+        state = state.copyWith(blocks: blocks);
+      case ChapterCompleted(:final chapter, :final summary):
+        final blocks = <NarrationBlock>[...state.blocks];
+        blocks.add(NarrationBlock(
+          turn: state.turnNo,
+          text: '—— 第 $chapter 卷 · 完 ——',
+          complete: true,
+          hint: true,
+        ));
+        if (summary.isNotEmpty) {
+          blocks.add(NarrationBlock(
+            turn: state.turnNo,
+            text: '卷记：$summary',
+            complete: true,
+            hint: true,
+          ));
         }
         state = state.copyWith(blocks: blocks);
       case ChoicesAvailable(:final options):

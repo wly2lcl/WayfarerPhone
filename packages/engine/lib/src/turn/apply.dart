@@ -360,7 +360,8 @@ void _applyConditions(
   List<String> applied,
 ) {
   if (kind == 'push') {
-    final c = Condition.fromJson(op.value);
+    // 模型偶发把 value 写成字符串而非对象，非 Map 一律按缺对象拒绝
+    final c = Condition.fromJson(op.value is Map ? op.value : null);
     if (c.id.isEmpty) {
       reject(op, 'condition push needs object');
       return;
@@ -388,7 +389,7 @@ void _applyInventory(
   List<String> applied,
 ) {
   if (kind == 'push') {
-    final item = Item.fromJson(op.value);
+    final item = Item.fromJson(op.value is Map ? op.value : null);
     if (item.id.isEmpty || item.qty < 1) {
       reject(op, 'inventory push needs item');
       return;
@@ -421,7 +422,7 @@ void _applyThreads(
   List<String> applied,
 ) {
   if (kind == 'push') {
-    final t = Thread.fromJson(op.value);
+    final t = Thread.fromJson(op.value is Map ? op.value : null);
     if (t.id.isEmpty) {
       reject(op, 'thread push needs object');
       return;

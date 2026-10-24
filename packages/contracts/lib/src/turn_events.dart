@@ -226,6 +226,21 @@ class TurnEnd extends TurnEvent {
       };
 }
 
+class ChapterCompleted extends TurnEvent {
+  final int chapter;
+  final String reason;
+  final String summary;
+  ChapterCompleted(this.chapter, this.reason, {this.summary = ''});
+
+  @override
+  Map<String, Object?> toJson() => {
+        'type': 'chapterCompleted',
+        'chapter': chapter,
+        'reason': reason,
+        if (summary.isNotEmpty) 'summary': summary,
+      };
+}
+
 class TurnError extends TurnEvent {
   final String code;
   final String message;

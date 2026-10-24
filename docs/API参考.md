@@ -102,7 +102,7 @@ final engine = await Engine.open();
 ### worlds.list()
 
 ```dart
-final worlds = await engine.worlds.list();
+final worlds = await engine.listWorlds();
 // WorldSummary(id, title, genre, summary, source, version, identityCount, updatedAt)
 ```
 
@@ -110,33 +110,35 @@ final worlds = await engine.worlds.list();
 
 返回世界公开介绍、当前版本号、身份数量、终局数量。**不返回 NPC 私密面与事件种子细节**；这些只留在引擎内部供导演使用。
 
-### runs.draw()
+### draw(worldId)
 
 ```dart
-final draw = await engine.runs.draw('w_cangwu', count: 3);
+final draw = await engine.draw('w_cangwu', count: 3);
 // DrawResult(drawToken, expiresAt, identities: List<Identity>)
 ```
 
 `drawToken` 是进程内一次性令牌，默认 5 分钟有效，防止 UI 跨页丢失身份来源。**不扣减任何配额**（无服务端）。
 
-### runs.create()
+### create()
 
 ```dart
-final start = await engine.runs.create(
+final start = await engine.create(
   worldId: 'w_cangwu',
   identityId: 'id_herb_apprentice',
   drawToken: draw.drawToken,
 );
-// StartResult(run, state, prologue, choices)
+// StartResult(runId, state, prologue, choices)
 ```
 
 开局序章一次性生成（非流式），保证首屏稳定。若模型未配置，返回 `MODEL_NOT_CONFIGURED`，UI 先跳设置。
 
-### runs.get(runId)
+### getRun(runId)
 
 ```dart
-final view = await engine.runs.get('r_2b9');
-// RunView(run, state, lastTurn, pendingChoices, worldLine)
+final view = await engine.getRun('r_2b9');
+// RunView(head: RunHead, state, pendingChoices)
+// RunHead 含 id/status/chapter/turnNo/headSnapshotId/endingId；
+// listRuns() 额外解析 endingTitle（终局名，展示用）
 ```
 
 用于冷启动、从后台返回、`TURN_CONFLICT` 后的重新同步。
@@ -153,53 +155,64 @@ final stream = engine.turns.run(
 await for (final event in stream) { ... }
 ```
 
-事件顺序固定：`turnStart → (classification) → narrationDelta* → narrationEnd → choices → statePatch → turnEnd`；失败则最后是 `turnError`，不与 `turnEnd` 同时出现。
+事件顺序固定：`turnStart → (classification) → narrationDelta* → narrationEnd → (chapterCompleted) → choices → statePatch → turnEnd`；失败则最后是 `turnError`，不与 `turnEnd` 同时出现。`chapterCompleted(chapter, reason, summary)` 仅在卷末收卷回合出现，`summary` 为压缩生成的卷记（可能为空）。
 
-### runs.branch()
+### branch()
 
 ```dart
-final branch = await engine.runs.branch(snapshotId: 's_11');
-// BranchResult(runId, forksFrom, state)
+final branch = await engine.branch(snapshotId: 's_11');
+// 返回新局 runId（String）
 ```
 
 从快照开**新的一局**，旧局原样保留。新局继承当时的身份与世界版本，不继承之后的任何事件。M0 限定每局最多 3 条世界线。
 
-### runs.archive()
+### archive()
 
 ```dart
-final archive = await engine.runs.archive('r_2b9');
-// Archive(endingId, title, epitaph, tags, keyChoices, stats, availableBranches)
+final archive = await engine.archive('r_2b9');
+// Archive(endingId, title, epitaph, tags, keyChoices, turns)
+// tags = [境界, 第N卷, N回合]；endingId 为空字符串时 title 兜底「仍在路上」
 ```
 
-### assistant.ask()
+### assistant()
 
 ```dart
-await for (final e in engine.assistant.ask('r_2b9', '苏晚这个人可信吗？')) { ... }
-// AssistantDelta(text) / AssistantEnd(usage)
+await for (final e in engine.assistant('r_2b9', '苏晚这个人可信吗？')) { ... }
+// AssistantDelta(text) / AssistantEnd(tokensIn, tokensOut)
 // 失败按 Prompt 契约返回固定文案，仍以 AssistantDelta + AssistantEnd 收尾，不新增错误事件
 ```
 
-`AssistantEvent` 只有两种：`AssistantDelta(text)` 与 `AssistantEnd(usage)`。
+`AssistantEvent` 只有两种：`AssistantDelta(text)` 与 `AssistantEnd(tokensIn, tokensOut)`。
 
 助手不写状态、不推进回合。只读 `RunState.knowledge` 与公开世界信息，不读 NPC 私密面与未回收伏笔的隐藏内容。
 
-### library.export() / library.import()
+### listRuns() / listNarration(runId)
 
 ```dart
-final file = await engine.library.export('w_cangwu');   // 生成 .world 到 exports/
-await engine.library.import(pickedFile);                 // 校验后写入 worlds/world_versions
+final runs = await engine.listRuns();      // List<RunHead>，updatedAt 新→旧
+final narration = await engine.listNarration('r_2b9'); // List<NarrationEntry>
+// NarrationEntry(turnNo, text, isMarker, summary)
+// 卷末收卷以 isMarker=true 条目出现：text='第 N 卷 · 完'，summary=卷记小结
+// 已落幕局也走本接口重读正文；档案页另有 archive()
 ```
 
-导出前置检查 `worlds.exportable = 1`，否则 `EXPORT_FORBIDDEN`。包格式与校验规则见[世界分享与本地世界库](./世界分享与UGC.md) §4。
+### library.export() / library.import()（未实现，M1+）
+
+> 规划接口，当前引擎与客户端均未提供。目标语义：导出前置检查 `worlds.exportable = 1`，否则 `EXPORT_FORBIDDEN`；包格式与校验规则见[世界分享与本地世界库](./世界分享与UGC.md) §4。实现排期见 TODO 的 M1/M2 条目。
 
 ### usage.summary()
 
 ```dart
-final s = await engine.usage.summary(from: ..., to: ...);
-// UsageSummary(turns, tokensIn, tokensOut, estimatedCost, byRole, failures)
+final s = await engine.usageSummary(from: ..., to: ...);
+// Map：{turns, tokensIn, tokensOut, failures, byRole: {role: [req, tokensIn, tokensOut]}}
+// 花费估算与 p50/p95 延迟见 usageStats()（设置页用量统计）
 ```
 
 ### settings.testConnection()
+
+```dart
+final report = await engine.testConnection();
+```
 
 发一个 `max_tokens = 8` 的最小请求，返回 `ConnectionReport(ok, model, latencyMs, errorCode?)`。不写任何业务表。
 

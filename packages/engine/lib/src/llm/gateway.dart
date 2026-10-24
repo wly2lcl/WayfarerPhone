@@ -14,6 +14,10 @@ class GatewayRequest {
   final double temperature;
   final int maxTokens;
 
+  /// 归属回合（观测 §9 的 usage_log.run_id / turn_no）；探活等无归属请求为 null
+  final String? runId;
+  final int? turnNo;
+
   GatewayRequest({
     required this.role,
     required this.system,
@@ -21,6 +25,8 @@ class GatewayRequest {
     this.jsonMode = false,
     this.temperature = 0.8,
     this.maxTokens = 1200,
+    this.runId,
+    this.turnNo,
   });
 }
 
@@ -67,7 +73,8 @@ class ModelGateway {
     return s;
   }
 
-  void _record(GatewayRole role, String model, int tIn, int tOut, bool est, int ms, bool ok) {
+  void _record(GatewayRole role, String model, int tIn, int tOut, bool est, int ms, bool ok,
+      {int? firstByteMs, String? runId, int? turnNo}) {
     config.onUsage?.call(UsageRecord(
       role: role,
       model: model,
@@ -76,19 +83,22 @@ class ModelGateway {
       estimated: est,
       ms: ms,
       ok: ok,
+      firstByteMs: firstByteMs,
+      runId: runId,
+      turnNo: turnNo,
     ));
   }
 
   /// 非流式整段返回（分类 / 导演 / 提取 / 压缩）
   Future<GatewayResult> complete(GatewayRequest req) async {
-    final sw = Stopwatch()..start();
     final settings = _settings;
     final model = settings.modelFor(req.role);
+    final sw = Stopwatch()..start();
     var attempt = 0;
     while (true) {
       attempt++;
       try {
-        final text = await _runOnce(settings, model, req);
+        final (text, firstByteMs) = await _runOnce(settings, model, req);
         sw.stop();
         final tOut = estimateTokens(text);
         final result = GatewayResult(
@@ -100,10 +110,12 @@ class ModelGateway {
           model: model,
         );
         _record(req.role, model, result.tokensIn, result.tokensOut, true,
-            result.ms, true);
+            result.ms, true,
+            firstByteMs: firstByteMs, runId: req.runId, turnNo: req.turnNo);
         return result;
       } on EngineException catch (e) {
-        _record(req.role, model, 0, 0, false, sw.elapsedMilliseconds, false);
+        _record(req.role, model, 0, 0, false, sw.elapsedMilliseconds, false,
+            runId: req.runId, turnNo: req.turnNo);
         if (!e.canRetry || attempt > _maxAttempts(e)) rethrow;
         await Future<void>.delayed(_backoff(attempt));
       }
@@ -120,6 +132,7 @@ class ModelGateway {
     var usageIn = 0;
     var usageOut = 0;
     var firstDelta = true;
+    int? firstByteMs;
     while (true) {
       attempt++;
       firstDelta = true;
@@ -127,9 +140,10 @@ class ModelGateway {
       try {
         await for (final chunk in _runStream(settings, model, req)) {
           if (chunk is String) {
-            if (firstDelta && sw.elapsedMilliseconds > 30000) {
+            if (firstDelta && sw.elapsedMilliseconds > 60000) {
               throw EngineException(EngineCode.modelTimeout, '首字超时', canRetry: true);
             }
+            if (firstDelta) firstByteMs = sw.elapsedMilliseconds;
             firstDelta = false;
             buffer.write(chunk);
             yield chunk;
@@ -143,10 +157,12 @@ class ModelGateway {
         final estimated = usageIn == 0 && usageOut == 0;
         final tIn = usageIn == 0 ? 0 : usageIn;
         final tOut = usageOut == 0 ? estimateTokens(full) : usageOut;
-        _record(req.role, model, tIn, tOut, estimated, sw.elapsedMilliseconds, true);
+        _record(req.role, model, tIn, tOut, estimated, sw.elapsedMilliseconds, true,
+            firstByteMs: firstByteMs, runId: req.runId, turnNo: req.turnNo);
         return;
       } on EngineException catch (e) {
-        _record(req.role, model, 0, 0, false, sw.elapsedMilliseconds, false);
+        _record(req.role, model, 0, 0, false, sw.elapsedMilliseconds, false,
+            runId: req.runId, turnNo: req.turnNo);
         if (buffer.isNotEmpty) {
           // 已输出正文后断开：保留正文，不落库（API 参考 §5.2）
           throw EngineException(EngineCode.modelTimeout, '流式中断，已保留正文', canRetry: true);
@@ -163,7 +179,7 @@ class ModelGateway {
     try {
       final settings = _settings;
       final model = settings.narrativeModel;
-      final text = await _runOnce(
+      final (text, _) = await _runOnce(
         settings,
         model,
         GatewayRequest(
@@ -198,16 +214,21 @@ class ModelGateway {
   Duration _backoff(int attempt) =>
       Duration(seconds: attempt == 1 ? 1 : 3);
 
-  Future<String> _runOnce(
+  Future<(String, int?)> _runOnce(
     ModelSettings settings,
     String model,
     GatewayRequest req,
   ) async {
+    final sw = Stopwatch()..start();
     final buffer = StringBuffer();
+    int? firstByteMs;
     await for (final chunk in _runStream(settings, model, req)) {
-      if (chunk is String) buffer.write(chunk);
+      if (chunk is String) {
+        firstByteMs ??= sw.elapsedMilliseconds;
+        buffer.write(chunk);
+      }
     }
-    return buffer.toString();
+    return (buffer.toString(), firstByteMs);
   }
 
   Stream<Object> _runStream(

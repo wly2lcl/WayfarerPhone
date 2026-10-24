@@ -13,11 +13,15 @@ class ModelSettings {
   String narrativeModel;
   String smallModel;
 
+  /// 每百万 token 单价（元），用于用量页估算花费；0 表示未配置
+  double pricePerMillion;
+
   ModelSettings({
     required this.protocol,
     required this.baseUrl,
     required this.narrativeModel,
     required this.smallModel,
+    this.pricePerMillion = 0,
   });
 
   String modelFor(GatewayRole role) =>
@@ -28,6 +32,7 @@ class ModelSettings {
         'baseUrl': baseUrl,
         'narrativeModel': narrativeModel,
         'smallModel': smallModel,
+        'pricePerMillion': pricePerMillion,
       };
 
   static ModelSettings fromJson(Object? j) {
@@ -40,6 +45,7 @@ class ModelSettings {
       baseUrl: (m['baseUrl'] as String?) ?? '',
       narrativeModel: (m['narrativeModel'] as String?) ?? '',
       smallModel: (m['smallModel'] as String?) ?? '',
+      pricePerMillion: (m['pricePerMillion'] as num?)?.toDouble() ?? 0,
     );
   }
 
@@ -125,6 +131,13 @@ class UsageRecord {
   final int ms;
   final bool ok;
 
+  /// 首个正文块到达耗时（首字延迟，观测 §9）；失败或非流式为 null
+  final int? firstByteMs;
+
+  /// 归属回合；探活等无归属请求为 null
+  final String? runId;
+  final int? turnNo;
+
   UsageRecord({
     required this.role,
     required this.model,
@@ -133,6 +146,9 @@ class UsageRecord {
     required this.estimated,
     required this.ms,
     required this.ok,
+    this.firstByteMs,
+    this.runId,
+    this.turnNo,
   });
 }
 

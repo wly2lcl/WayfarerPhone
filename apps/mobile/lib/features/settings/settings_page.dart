@@ -19,6 +19,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   late final TextEditingController _baseUrl;
   late final TextEditingController _narrativeModel;
   late final TextEditingController _smallModel;
+  late final TextEditingController _price;
   final TextEditingController _key = TextEditingController();
 
   late LlmProtocol _protocol;
@@ -27,6 +28,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _saving = false;
   bool _testing = false;
   String? _testResult;
+  UsageStats? _stats;
 
   @override
   void initState() {
@@ -36,8 +38,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     _baseUrl = TextEditingController(text: settings.baseUrl);
     _narrativeModel = TextEditingController(text: settings.narrativeModel);
     _smallModel = TextEditingController(text: settings.smallModel);
+    _price = TextEditingController(
+        text: settings.pricePerMillion > 0
+            ? settings.pricePerMillion.toString()
+            : '');
     _presetId = _matchPreset(settings).id;
     _loadKeyState();
+    _loadStats();
   }
 
   @override
@@ -45,8 +52,19 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     _baseUrl.dispose();
     _narrativeModel.dispose();
     _smallModel.dispose();
+    _price.dispose();
     _key.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadStats() async {
+    try {
+      final st = await ref.read(engineProvider).usageStats();
+      if (!mounted) return;
+      setState(() => _stats = st);
+    } catch (_) {
+      // 统计仅展示用，失败不打扰
+    }
   }
 
   Future<void> _loadKeyState() async {
@@ -83,6 +101,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         baseUrl: _baseUrl.text.trim(),
         narrativeModel: _narrativeModel.text.trim(),
         smallModel: _smallModel.text.trim(),
+        pricePerMillion: double.tryParse(_price.text.trim()) ?? 0,
       );
 
   Future<void> _persist() async {
@@ -161,6 +180,53 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     });
     ScaffoldMessenger.of(context)
         .showSnackBar(const SnackBar(content: Text('已清除本机密钥')));
+  }
+
+  /// 用量统计区（工程与开发计划 §9）：近 30 天请求、首字分位、单回合 token、估算花费
+  Widget _buildUsageSection(ThemeData theme, Color sub) {
+    final st = _stats;
+    final price = double.tryParse(_price.text.trim()) ?? 0;
+    String? cost;
+    if (st != null && price > 0) {
+      final total = (st.tokensIn + st.tokensOut) / 1000000 * price;
+      cost = '¥${total.toStringAsFixed(2)}';
+    }
+    String ms(int? v) => v == null ? '—' : '${(v / 1000).toStringAsFixed(1)}s';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        PaperSectionLabel('用量（近 30 天）'),
+        const SizedBox(height: 8),
+        if (st == null)
+          Text('暂无数据', style: TextStyle(fontSize: 12, color: sub))
+        else ...<Widget>[
+          Text(
+            '请求 ${st.requests} 次'
+            '${st.failures > 0 ? '（失败 ${st.failures}）' : ''}'
+            ' · 推进回合 ${st.turns} 个',
+            style: TextStyle(fontSize: 13, color: sub),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '首字 p50 ${ms(st.p50Ms)} · p95 ${ms(st.p95Ms)}',
+            style: TextStyle(fontSize: 13, color: sub),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '单回合平均 ${st.avgTokensPerTurn} token'
+            ' · 合计输入 ${st.tokensIn} / 输出 ${st.tokensOut} token',
+            style: TextStyle(fontSize: 13, color: sub),
+          ),
+          if (cost != null) ...<Widget>[
+            const SizedBox(height: 4),
+            Text(
+              '估算花费 $cost（按 ${_price.text.trim()} 元/百万 token）',
+              style: TextStyle(fontSize: 13, color: sub),
+            ),
+          ],
+        ],
+      ],
+    );
   }
 
   @override
@@ -272,6 +338,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             decoration: paperInputDecoration(context, '小模型',
                 hint: '分类、导演与抽取用'),
           ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _price,
+            keyboardType:
+                const TextInputType.numberWithOptions(decimal: true),
+            style: const TextStyle(fontSize: 14),
+            decoration: paperInputDecoration(context, '单价（元 / 百万 token）',
+                hint: '用于估算花费，留空则不显示'),
+          ),
+          const SizedBox(height: 24),
+          _buildUsageSection(theme, sub),
           const SizedBox(height: 24),
           Row(
             children: <Widget>[

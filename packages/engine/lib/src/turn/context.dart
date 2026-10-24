@@ -26,13 +26,18 @@ class EngineBookkeeping {
   int lastTurningTurn;
   Map<String, int> actionCounts;
 
+  /// 当前卷的起始回合号（卷末后的下一回合记 1）。0 = 尚未收过卷。
+  int chapterStartTurn;
+
   EngineBookkeeping({
     List<String>? firedSeeds,
     int? lastTurningTurn,
     Map<String, int>? actionCounts,
+    int? chapterStartTurn,
   })  : firedSeeds = firedSeeds ?? [],
         lastTurningTurn = lastTurningTurn ?? -99,
-        actionCounts = actionCounts ?? {};
+        actionCounts = actionCounts ?? {},
+        chapterStartTurn = chapterStartTurn ?? 0;
 
   static EngineBookkeeping fromMemoryJson(String? memory) {
     if (memory == null || memory.isEmpty) return EngineBookkeeping();
@@ -50,6 +55,8 @@ class EngineBookkeeping {
             actionCounts: (eng['actionCounts'] as Map?)?.map(
               (k, v) => MapEntry(k.toString(), v is int ? v : 0),
             ),
+            chapterStartTurn:
+                eng['chapterStartTurn'] is int ? eng['chapterStartTurn'] as int : 0,
           );
         }
       }
@@ -64,6 +71,7 @@ class EngineBookkeeping {
         'firedSeeds': firedSeeds,
         'lastTurningTurn': lastTurningTurn,
         'actionCounts': actionCounts,
+        'chapterStartTurn': chapterStartTurn,
       },
     });
   }

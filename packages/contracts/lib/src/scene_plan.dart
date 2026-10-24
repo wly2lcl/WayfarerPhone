@@ -59,7 +59,7 @@ class PlanChoice {
       intent: asSOr(m['intent'], ''),
       risk: enumBy(Risk.values, m['risk'], Risk.medium),
       requires:
-          m['requires'] == null ? null : ChoiceRequires.fromJson(m['requires']),
+          m['requires'] is Map ? ChoiceRequires.fromJson(m['requires']) : null,
       hidden: m['hidden'] is bool ? m['hidden'] as bool : null,
     );
   }
@@ -115,12 +115,12 @@ class ScenePlan {
     return ScenePlan(
       beat: BeatX.fromName(m['beat']),
       summary: asSOr(m['summary'], ''),
-      npcActions: asList<NpcAction>(m['npcActions'], NpcAction.fromJson),
+      npcActions: asListOfMaps<NpcAction>(m['npcActions'], NpcAction.fromJson),
       reveals: asList<String>(m['reveals'], (e) => asSOr(e, '')),
       mood: asSOr(m['mood'], ''),
-      nextChoices: asList<PlanChoice>(m['nextChoices'], PlanChoice.fromJson),
+      nextChoices: asListOfMaps<PlanChoice>(m['nextChoices'], PlanChoice.fromJson),
       advanceTimeDays: asD(m['advanceTimeDays']),
-      chapterEnd: m['chapterEnd'] == null ? null : ChapterEnd.fromJson(m['chapterEnd']),
+      chapterEnd: m['chapterEnd'] is Map ? ChapterEnd.fromJson(m['chapterEnd']) : null,
     );
   }
 }

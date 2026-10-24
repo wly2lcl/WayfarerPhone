@@ -99,6 +99,8 @@ String buildDirectorPrompt({
   final beatNote = [
     if (!canTurningPoint) '本回合不允许 turning_point（离上个关键节点太近）',
     if (!canChapterEnd) '本回合不允许 chapter_end（未到卷末回合）',
+    if (canChapterEnd)
+      '已到卷末（第 32 回合起）：本回合 beat 必须为 "chapter_end"，且 chapterEnd 必须为 {"reason":"一句话收卷理由"}；收束本卷全部主线伏笔，写突破筑基的判定与本卷终局，不得再开新支线',
   ].join('；');
   return '''
 你是这个世界的导演。判定结果已经由系统给出，你只能据此编排，不能反转成败。

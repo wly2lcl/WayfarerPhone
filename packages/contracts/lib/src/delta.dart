@@ -54,9 +54,9 @@ class StateDelta {
   static StateDelta fromJson(Object? j) {
     final m = rawMap(j);
     return StateDelta(
-      ops: asList<Op>(m['ops'], Op.fromJson),
+      ops: asListOfMaps<Op>(m['ops'], Op.fromJson),
       facts: asList<String>(m['facts'], (e) => asSOr(e, '')),
-      openThreads: asList<Thread>(m['openThreads'], Thread.fromJson),
+      openThreads: asListOfMaps<Thread>(m['openThreads'], Thread.fromJson),
       closeThreads: asList<String>(m['closeThreads'], (e) => asSOr(e, '')),
     );
   }
