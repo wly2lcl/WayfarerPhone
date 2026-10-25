@@ -43,8 +43,8 @@ class PlayController extends Notifier<PlayState> {
           blocks.add(NarrationBlock(turn: 0, text: start.prologue, complete: true));
         }
         if (start.choices.isNotEmpty) choices = start.choices;
-      } else if (view.head.turnNo > 0) {
-        // 重新进入：加载历史正文（离线也能读回全部叙事）
+      } else {
+        // 重新进入（含第 0 回合的试玩局/刚开局的正式局）：加载历史正文（离线也能读回全部叙事）
         final history = await _engine.listNarration(runId);
         var lastTurn = -1;
         for (final n in history) {
@@ -77,12 +77,14 @@ class PlayController extends Notifier<PlayState> {
           lastTurn = n.turnNo;
           blocks.add(NarrationBlock(turn: n.turnNo, text: n.text, complete: true));
         }
-        blocks.add(NarrationBlock(
-          turn: view.head.turnNo,
-          text: '—— 回到第 ${view.head.turnNo} 回合 ——',
-          complete: true,
-          hint: true,
-        ));
+        if (view.head.turnNo > 0) {
+          blocks.add(NarrationBlock(
+            turn: view.head.turnNo,
+            text: '—— 回到第 ${view.head.turnNo} 回合 ——',
+            complete: true,
+            hint: true,
+          ));
+        }
       }
       state = state.copyWith(
         state: view.state,

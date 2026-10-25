@@ -1,8 +1,10 @@
 # API 参考 · 本地引擎与模型网关
 
-> 版本：v0.3（单机离线）
-> 最后更新：2026-10-23
+> 版本：v0.4（单机离线）
+> 最后更新：2026-10-24
 > 上游：[技术方案](./技术方案.md) ｜ 相关：[Prompt 契约](./Prompt契约.md)
+>
+> v0.4 变更：M1 世界工坊接口落地——新增 `drafts.*()` 门面定义与错误码语义；`runs.list()` 标注不含试玩局。
 >
 > v0.3 变更：模型网关支持三种协议（OpenAI Chat Completions / OpenAI Responses / Anthropic Messages），内置 DeepSeek 与 OpenAI 预设；`.run` 存档包独立于 `.world`。
 >
@@ -56,7 +58,7 @@ class EngineException implements Exception {
 | `EXPORT_FORBIDDEN` | 该世界 `exportable = 0`，或所属世界不可导出导致该局 `.run` 不可导出 | 说明为导入来源，不可导出 |
 | `DRAFT_INCOMPLETE` | 草稿完整度不足，不可生成或冻结 | 展示缺失字段，回到访谈 |
 | `QUALITY_GATE_FAILED` | 一致性检查存在 `error` 级问题 | 打开编辑器定位问题项 |
-| `WORLD_FROZEN` | 已冻结版本不可修改 | 提示另存为新草稿 |
+| `WORLD_FROZEN` | 已冻结版本不可修改；内容未变时重复冻结同样报此码 | 提示已是最新冻结版本；修改内容后再冻结出新版本 |
 
 > 没有 `AUTH_REQUIRED`、`FORBIDDEN`、`QUOTA_EXCEEDED`、`CONFLICT`：无账号、无配额、无多端写入。
 
@@ -71,7 +73,7 @@ class EngineException implements Exception {
 | `worlds.get(worldId)` | 世界公开介绍与版本；**不返回 NPC 私密面与种子细节** |
 | `runs.draw(worldId, {count})` | 抽取身份卡 |
 | `runs.create({worldId, identityId, drawToken})` | 用身份开局，返回序章与首批选项 |
-| `runs.list()` | 我的局列表 |
+| `runs.list()` | 我的局列表（不含试玩局） |
 | `runs.get(runId)` | 当前局与待选状态 |
 | `turns.run(runId, expectedTurn, input)` | 推进一回合，返回 `Stream<TurnEvent>` |
 | `runs.branch({snapshotId})` | 从快照开新世界线 |
@@ -80,6 +82,15 @@ class EngineException implements Exception {
 | `runs.importPack(File)` | 导入 `.run` 存档包，落地为本机新局 |
 | `runs.delete(runId)` | 删除一局（含快照与事件） |
 | `assistant.ask(runId, text)` | 向随行助手提问，返回 `Stream<AssistantEvent>` |
+| `drafts.create(source)` | 创建世界草稿（`manual / dialogue / import`） |
+| `drafts.interview(draftId, text, {skip})` | 结构化访谈一轮：抽取 / 跳过代填 / 矛盾检出 |
+| `drafts.generate(draftId)` | 生成圣经 + 身份池 + 种子，跑六条一致性检查 |
+| `drafts.detail(draftId)` | 草稿完整视图：字段得分、问题列表、圣经 |
+| `drafts.save(draftId, patch)` | 编辑器保存（运行时字段拒改） |
+| `drafts.trial(draftId, {identityId})` | 开试玩局（`is_trial=1`，不进「我的局」），返回序章与首批选项；`review`/`trial`/`frozen` 均可进入（`frozen` 试玩后状态保持不变）；重复试玩自动替换旧试玩局 |
+| `drafts.discardTrial(draftId)` | 丢弃试玩局，草稿状态回 `review` |
+| `drafts.freeze(draftId)` | 冻结为本地版本（`world_versions` 版本 +1） |
+| `drafts.delete(draftId)` | 删除草稿、访谈记录与试玩局 |
 | `library.import(File)` | 导入 `.world` 包 |
 | `library.export(worldId)` | 导出 `.world` 包，返回文件路径 |
 | `library.rename(worldId, title)` | 重命名本地世界 |
@@ -184,6 +195,8 @@ await for (final e in engine.assistant('r_2b9', '苏晚这个人可信吗？')) 
 
 `AssistantEvent` 只有两种：`AssistantDelta(text)` 与 `AssistantEnd(tokensIn, tokensOut)`。
 
+试玩局同样可用：`loadRunPackage` 对 `is_trial=1` 的局从其来源草稿行取圣经与身份池（`world_draft/draft_package.dart`），随行助手在试玩页与其他局行为一致；草稿被删则返回 `NOT_FOUND`。
+
 助手不写状态、不推进回合。只读 `RunState.knowledge` 与公开世界信息，不读 NPC 私密面与未回收伏笔的隐藏内容。
 
 ### listRuns() / listNarration(runId)
@@ -195,6 +208,24 @@ final narration = await engine.listNarration('r_2b9'); // List<NarrationEntry>
 // 卷末收卷以 isMarker=true 条目出现：text='第 N 卷 · 完'，summary=卷记小结
 // 已落幕局也走本接口重读正文；档案页另有 archive()
 ```
+
+### drafts.*()（M1 世界工坊，已实现）
+
+```dart
+final view = await engine.drafts.create(DraftSource.dialogue);
+final turn = await engine.drafts.interview(view.id, '末法时代，灵气枯竭', skip: false);
+// InterviewTurnResult：下一问、字段得分、矛盾反问（代填字段标 filledByAI）
+final done = await engine.drafts.generate(view.id);   // 完整度 ≥70 才可生成
+final detail = await engine.drafts.detail(view.id);   // DraftDetail：字段得分 + 问题列表 + 圣经
+await engine.drafts.save(view.id, bible: ..., title: '末法残卷');
+final start = await engine.drafts.trial(view.id);     // StartResult：试玩局（is_trial=1）
+await engine.drafts.discardTrial(view.id);            // 状态回 review，试玩局与事件删除
+final r = await engine.drafts.freeze(view.id);        // FreezeResult(worldId, version)
+```
+
+- `DraftView(id, source, status, title, step, completeness, fields, qualityScore, issues, exportable, worldId, updatedAt)`；`issues` 元素为 `{level, code, field, message}`，`error` 级问题同时阻塞客户端的试玩与冻结按钮
+- `trial` 返回的局不进 `runs.list()`；序章事件与正式局同构（`narration` + `choice`）
+- `freeze` 幂等规则：内容 checksum 未变时抛 `WORLD_FROZEN`；已冻结草稿继续修改可再冻结出 v2、v3…
 
 ### library.export() / library.import()（未实现，M1+）
 
@@ -337,3 +368,4 @@ class TurnError        extends TurnEvent { final EngineCode code; final String m
 | 2026-10-23 | v0.1：HTTP 端点、SSE、错误码、配额 |
 | 2026-10-23 | v0.2：改为本地引擎门面 + 模型网关契约；删除账号、配额、409、幂等键与服务端错误码 |
 | 2026-10-23 | v0.3：新增三种模型协议适配、供应商预设、`.run` 存档包导入导出 |
+| 2026-10-24 | v0.4：M1 世界工坊接口——§2/§3 新增 `drafts.*()`（create/interview/generate/detail/save/trial/discardTrial/freeze/delete），`DraftView` 与质量门语义；`runs.list()` 标注不含试玩局；`WORLD_FROZEN` 对齐实现（重复冻结同码） |

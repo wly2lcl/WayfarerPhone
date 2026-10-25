@@ -1,10 +1,21 @@
 enum LlmProtocol { openai_chat, openai_responses, anthropic_messages }
 
-enum GatewayRole { classifier, director, narrator, extractor, companion, compress }
+enum GatewayRole {
+  classifier,
+  director,
+  narrator,
+  extractor,
+  companion,
+  compress,
+  interview,
+  composer,
+}
 
 extension GatewayRoleX on GatewayRole {
   bool get wantsNarrativeModel =>
-      this == GatewayRole.narrator || this == GatewayRole.companion;
+      this == GatewayRole.narrator ||
+      this == GatewayRole.companion ||
+      this == GatewayRole.composer;
 }
 
 class ModelSettings {

@@ -197,5 +197,45 @@ void main() {
       expect(plan.nextChoices.first.intent, '周旋');
       expect(plan.chapterEnd, isNull);
     });
+
+    test('WorldBible 内容段畸形：降级不炸（M1 生成管线实测根因）', () {
+      final bible = WorldBible.fromJson({
+        'meta': {'title': '测试'},
+        'npcPool': [
+          '坏元素',
+          {
+            'id': 'n_1', 'name': '甲', 'role': '掌柜',
+            'public': '不是对象', 'private': ['也不是'],
+          },
+          {
+            'id': 'n_2', 'name': '乙', 'role': '捕头',
+            'public': {'appearance': '高', 'manner': '冷', 'affiliation': '官府'},
+            'private': {'secret': 's', 'motive': 'm', 'fear': 'f', 'leverage': ['l']},
+          },
+        ],
+        'eventSeeds': [
+          {
+            'id': 'e_1', 'title': '夜袭', 'kind': 'encounter', 'summary': 's',
+            'requires': 'chapter>=3', 'effects': ['high', '提示'],
+            'weight': '高', 'once': 'true',
+          },
+        ],
+        'endgame': [
+          {'id': 'g_1', 'type': 'death', 'condition': 'hp<=0', 'title': '死'},
+        ],
+      });
+      expect(bible.npcPool, hasLength(2));
+      expect(bible.npcPool[0].id, 'n_1');
+      expect(bible.npcPool[0].public.affiliation, isEmpty);
+      expect(bible.npcPool[1].public.affiliation, '官府');
+      expect(bible.eventSeeds, hasLength(1));
+      expect(bible.eventSeeds.first.requires.flags, isEmpty);
+      expect(bible.eventSeeds.first.effects.danger, Danger.low);
+      expect(bible.eventSeeds.first.effects.hint, isEmpty);
+      expect(bible.eventSeeds.first.weight, 50);
+      expect(bible.eventSeeds.first.once, isTrue);
+      expect(bible.endgame, hasLength(1));
+      expect(bible.endgame.first.type, EndingType.death);
+    });
   });
 }

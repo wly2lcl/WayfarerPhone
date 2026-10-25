@@ -14,6 +14,8 @@ import 'usage.dart';
 import 'turn/context.dart';
 import 'turn/queue.dart';
 import 'turn/turn_engine.dart';
+import 'world_draft/draft_package.dart';
+import 'world_draft/world_draft_service.dart';
 
 /// 内置世界种子数据（App 从 assets 读入后传入）
 class SeedData {
@@ -132,6 +134,7 @@ class Engine {
   final ModelGateway gateway;
   final KeyStore keyStore;
   late final TurnEngine turns;
+  late final WorldDraftService drafts;
   final SerialQueue _queue = SerialQueue();
   final Map<String, (List<Identity>, int)> _drawTokens = {};
   final Random random;
@@ -141,6 +144,13 @@ class Engine {
       {Random? random})
       : random = random ?? Random.secure() {
     turns = TurnEngine(db: db, gateway: gateway, queue: _queue, random: random);
+    drafts = WorldDraftService(
+      db: db,
+      gateway: gateway,
+      initialState: initialStateFor,
+      prologue: prologueFor,
+      random: this.random,
+    );
   }
 
   static Future<Engine> open({
@@ -188,13 +198,24 @@ class Engine {
     };
   }
 
+  /// 试玩局不进「我的局」也不计入用量统计
+  Future<Set<String>> _trialRunIds() async {
+    final rows = await (db.select(db.runs)
+          ..where((r) => r.isTrial.equals(true)))
+        .get();
+    return rows.map((r) => r.id).toSet();
+  }
+
   /// 近 N 天用量汇总（观测 §9），设置页展示
   Future<UsageStats> usageStats({int days = 30}) async {
     final since =
         DateTime.now().millisecondsSinceEpoch - days * 86400000;
-    final rows = await (db.select(db.usageLog)
-          ..where((u) => u.createdAt.isBiggerOrEqualValue(since)))
-        .get();
+    final trialIds = await _trialRunIds();
+    final rows = (await (db.select(db.usageLog)
+              ..where((u) => u.createdAt.isBiggerOrEqualValue(since)))
+            .get())
+        .where((r) => r.runId == null || !trialIds.contains(r.runId))
+        .toList();
     final okRows = rows.where((r) => r.ok).toList();
     final latencies =
         okRows.map((r) => r.firstByteMs ?? r.ms).toList()..sort();
@@ -371,7 +392,7 @@ class Engine {
     final latest = versions.reduce((a, b) => a.version > b.version ? a : b);
     final bible = WorldBible.fromJson(jsonDecode(latest.bible));
 
-    final state = _initialState(identity, bible);
+    final state = initialStateFor(identity, bible);
     final runId = 'r_${random.nextInt(0xFFFF).toRadixString(16).padLeft(4, '0')}';
     await RunsDao(db).createRun(
       runId: runId,
@@ -387,25 +408,7 @@ class Engine {
         ));
 
     // 序章：一次性生成
-    final system = _systemFor(bible, identity);
-    final prologuePrompt = '''
-写本局序章。玩家身份：${identity.name}。${identity.situation}
-起始地点：${state.location.placeId}，时间 ${state.meta.gameTime}。
-要求：200–300 字；第二人称；交代处境、目标与枷锁；结尾不替玩家做决定；
-只输出正文。''';
-    var prologue = '';
-    try {
-      final res = await gateway.complete(GatewayRequest(
-        role: GatewayRole.narrator,
-        system: system,
-        user: assembleUser(sections: [prologuePrompt], systemTokens: estTokens(system)),
-        temperature: 0.85,
-        maxTokens: 700,
-      ));
-      prologue = res.text.length > 1200 ? res.text.substring(0, 1200) : res.text;
-    } on EngineException {
-      rethrow;
-    }
+    final prologue = await prologueFor(bible, identity, state, runId);
 
     final choices = [
       Choice(id: 't0c1', label: '先把眼前的事应付过去', intent: '应付眼前事务，观察环境', risk: Risk.low),
@@ -437,7 +440,7 @@ class Engine {
     return StartResult(runId: runId, state: state, prologue: prologue, choices: choices);
   }
 
-  RunState _initialState(Identity identity, WorldBible bible) {
+  RunState initialStateFor(Identity identity, WorldBible bible) {
     final tier = bible.tierByStage(1)!;
     final statMod = -(identity.difficulty - 1) * 5;
     final state = RunState(
@@ -491,8 +494,30 @@ class Engine {
   String _systemFor(WorldBible bible, Identity identity) =>
       '${ironLawSection(bible)}\n\n${worldSection(bible)}\n\n${identitySection(identity)}';
 
+  /// 序章一次性生成（正式局与试玩局共用）
+  Future<String> prologueFor(
+      WorldBible bible, Identity identity, RunState state, String runId) async {
+    final system = _systemFor(bible, identity);
+    final prologuePrompt = '''
+写本局序章。玩家身份：${identity.name}。${identity.situation}
+起始地点：${state.location.placeId}，时间 ${state.meta.gameTime}。
+要求：200–300 字；第二人称；交代处境、目标与枷锁；结尾不替玩家做决定；
+只输出正文。''';
+    final res = await gateway.complete(GatewayRequest(
+      role: GatewayRole.narrator,
+      system: system,
+      user: assembleUser(sections: [prologuePrompt], systemTokens: estTokens(system)),
+      temperature: 0.85,
+      maxTokens: 700,
+      runId: runId,
+      turnNo: 0,
+    ));
+    return res.text.length > 1200 ? res.text.substring(0, 1200) : res.text;
+  }
+
   Future<List<RunHead>> listRuns() async {
     final rows = await (db.select(db.runs)
+          ..where((r) => r.isTrial.equals(false))
           ..orderBy([(r) => OrderingTerm.desc(r.updatedAt)]))
         .get();
     final versions = await db.select(db.worldVersions).get();
@@ -629,6 +654,8 @@ class Engine {
           ..where((s) => s.id.equals(snapshotId)))
         .getSingleOrNull();
     if (snap == null) throw EngineException(EngineCode.notFound, '快照不存在');
+    final sourceRun = await RunsDao(db).loadHead(snap.runId);
+    if (sourceRun == null) throw EngineException(EngineCode.notFound, '局不存在');
     final total = await db.select(db.runs).get();
     if (total.length >= 20) {
       throw EngineException(EngineCode.stateInvalid, '本机世界线已达上限');
@@ -637,10 +664,12 @@ class Engine {
     final state = RunState.fromJson(jsonDecode(snap.state));
     await RunsDao(db).createRun(
       runId: newId,
-      worldId: await _worldIdOf(snap.runId),
-      worldVersion: await _worldVersionOf(snap.runId),
+      worldId: sourceRun.worldId,
+      worldVersion: sourceRun.worldVersion,
       identityId: state.character.identityId,
       initialState: state,
+      isTrial: sourceRun.isTrial,
+      draftId: sourceRun.draftId,
     );
     return newId;
   }
@@ -648,12 +677,6 @@ class Engine {
   /// 本局最近的回合快照（分叉候选，新→旧）
   Future<List<SnapshotBrief>> listSnapshots(String runId, {int limit = 12}) =>
       RunsDao(db).listSnapshots(runId, limit: limit);
-
-  Future<String> _worldIdOf(String runId) async =>
-      (await RunsDao(db).loadHead(runId))?.worldId ?? 'w_cangwu';
-
-  Future<int> _worldVersionOf(String runId) async =>
-      (await RunsDao(db).loadHead(runId))?.worldVersion ?? 1;
 
   Future<void> deleteRun(String runId) async {
     await (db.delete(db.runs)..where((r) => r.id.equals(runId))).go();
@@ -666,11 +689,12 @@ class Engine {
     if (head == null) throw EngineException(EngineCode.notFound, '局不存在');
     final state = await RunsDao(db).loadState(runId);
     if (state == null) throw EngineException(EngineCode.notFound, '状态缺失');
-    final versions = await (db.select(db.worldVersions)
-          ..where((v) => v.worldId.equals(head.worldId) & v.version.equals(head.worldVersion)))
-        .getSingleOrNull();
-    if (versions == null) throw EngineException(EngineCode.notFound, '世界版本缺失');
-    final bible = WorldBible.fromJson(jsonDecode(versions.bible));
+    final WorldBible bible;
+    try {
+      bible = (await loadRunPackage(db, head)).bible;
+    } on EngineException {
+      throw EngineException(EngineCode.notFound, '世界版本缺失');
+    }
     // 随行模式：只读 knowledge，不注入 NPC 私密面与种子
     final system =
         '${ironLawSection(bible)}\n\n${buildCompanionPrompt(knowledge: state.knowledge.join('；'), stateSummary: stateSummary(state), recentTurns: '', question: question)}';
@@ -701,7 +725,9 @@ class Engine {
     if (to != null) {
       query.where((u) => u.createdAt.isSmallerOrEqualValue(to));
     }
-    final rows = await query.get();
+    final trialIds = await _trialRunIds();
+    final rows =
+        (await query.get()).where((r) => !trialIds.contains(r.runId)).toList();
     var turns = 0, tokensIn = 0, tokensOut = 0, failures = 0;
     final byRole = <String, List<int>>{};
     for (final r in rows) {

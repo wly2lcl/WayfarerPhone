@@ -18,6 +18,11 @@ class WorldsPage extends ConsumerWidget {
         title: const Text('书架'),
         actions: <Widget>[
           IconButton(
+            icon: const Icon(Icons.handyman_outlined),
+            tooltip: '世界工坊',
+            onPressed: () => context.push('/workshop'),
+          ),
+          IconButton(
             icon: const Icon(Icons.local_library_outlined),
             tooltip: '我的局',
             onPressed: () => context.push('/library'),

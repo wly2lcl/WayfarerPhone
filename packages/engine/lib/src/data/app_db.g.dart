@@ -1222,6 +1222,771 @@ class WorldVersionsCompanion extends UpdateCompanion<WorldVersion> {
   }
 }
 
+class $WorldDraftsTable extends WorldDrafts
+    with TableInfo<$WorldDraftsTable, WorldDraft> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $WorldDraftsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+    'source',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _interviewMeta = const VerificationMeta(
+    'interview',
+  );
+  @override
+  late final GeneratedColumn<String> interview = GeneratedColumn<String>(
+    'interview',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _bibleDraftMeta = const VerificationMeta(
+    'bibleDraft',
+  );
+  @override
+  late final GeneratedColumn<String> bibleDraft = GeneratedColumn<String>(
+    'bible_draft',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _identitiesMeta = const VerificationMeta(
+    'identities',
+  );
+  @override
+  late final GeneratedColumn<String> identities = GeneratedColumn<String>(
+    'identities',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _seedsMeta = const VerificationMeta('seeds');
+  @override
+  late final GeneratedColumn<String> seeds = GeneratedColumn<String>(
+    'seeds',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _qualityMeta = const VerificationMeta(
+    'quality',
+  );
+  @override
+  late final GeneratedColumn<String> quality = GeneratedColumn<String>(
+    'quality',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _importJobIdMeta = const VerificationMeta(
+    'importJobId',
+  );
+  @override
+  late final GeneratedColumn<String> importJobId = GeneratedColumn<String>(
+    'import_job_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _worldIdMeta = const VerificationMeta(
+    'worldId',
+  );
+  @override
+  late final GeneratedColumn<String> worldId = GeneratedColumn<String>(
+    'world_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _exportableMeta = const VerificationMeta(
+    'exportable',
+  );
+  @override
+  late final GeneratedColumn<bool> exportable = GeneratedColumn<bool>(
+    'exportable',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("exportable" IN (0, 1))',
+    ),
+    clientDefault: () => true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    source,
+    status,
+    interview,
+    bibleDraft,
+    identities,
+    seeds,
+    quality,
+    importJobId,
+    worldId,
+    exportable,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'world_drafts';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<WorldDraft> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('source')) {
+      context.handle(
+        _sourceMeta,
+        source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('interview')) {
+      context.handle(
+        _interviewMeta,
+        interview.isAcceptableOrUnknown(data['interview']!, _interviewMeta),
+      );
+    }
+    if (data.containsKey('bible_draft')) {
+      context.handle(
+        _bibleDraftMeta,
+        bibleDraft.isAcceptableOrUnknown(data['bible_draft']!, _bibleDraftMeta),
+      );
+    }
+    if (data.containsKey('identities')) {
+      context.handle(
+        _identitiesMeta,
+        identities.isAcceptableOrUnknown(data['identities']!, _identitiesMeta),
+      );
+    }
+    if (data.containsKey('seeds')) {
+      context.handle(
+        _seedsMeta,
+        seeds.isAcceptableOrUnknown(data['seeds']!, _seedsMeta),
+      );
+    }
+    if (data.containsKey('quality')) {
+      context.handle(
+        _qualityMeta,
+        quality.isAcceptableOrUnknown(data['quality']!, _qualityMeta),
+      );
+    }
+    if (data.containsKey('import_job_id')) {
+      context.handle(
+        _importJobIdMeta,
+        importJobId.isAcceptableOrUnknown(
+          data['import_job_id']!,
+          _importJobIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('world_id')) {
+      context.handle(
+        _worldIdMeta,
+        worldId.isAcceptableOrUnknown(data['world_id']!, _worldIdMeta),
+      );
+    }
+    if (data.containsKey('exportable')) {
+      context.handle(
+        _exportableMeta,
+        exportable.isAcceptableOrUnknown(data['exportable']!, _exportableMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  WorldDraft map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return WorldDraft(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      interview: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}interview'],
+      ),
+      bibleDraft: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}bible_draft'],
+      ),
+      identities: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}identities'],
+      ),
+      seeds: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}seeds'],
+      ),
+      quality: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}quality'],
+      ),
+      importJobId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}import_job_id'],
+      ),
+      worldId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}world_id'],
+      ),
+      exportable: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}exportable'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $WorldDraftsTable createAlias(String alias) {
+    return $WorldDraftsTable(attachedDatabase, alias);
+  }
+}
+
+class WorldDraft extends DataClass implements Insertable<WorldDraft> {
+  final String id;
+  final String source;
+  final String status;
+  final String? interview;
+  final String? bibleDraft;
+  final String? identities;
+  final String? seeds;
+  final String? quality;
+  final String? importJobId;
+  final String? worldId;
+  final bool exportable;
+  final int createdAt;
+  final int updatedAt;
+  const WorldDraft({
+    required this.id,
+    required this.source,
+    required this.status,
+    this.interview,
+    this.bibleDraft,
+    this.identities,
+    this.seeds,
+    this.quality,
+    this.importJobId,
+    this.worldId,
+    required this.exportable,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['source'] = Variable<String>(source);
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || interview != null) {
+      map['interview'] = Variable<String>(interview);
+    }
+    if (!nullToAbsent || bibleDraft != null) {
+      map['bible_draft'] = Variable<String>(bibleDraft);
+    }
+    if (!nullToAbsent || identities != null) {
+      map['identities'] = Variable<String>(identities);
+    }
+    if (!nullToAbsent || seeds != null) {
+      map['seeds'] = Variable<String>(seeds);
+    }
+    if (!nullToAbsent || quality != null) {
+      map['quality'] = Variable<String>(quality);
+    }
+    if (!nullToAbsent || importJobId != null) {
+      map['import_job_id'] = Variable<String>(importJobId);
+    }
+    if (!nullToAbsent || worldId != null) {
+      map['world_id'] = Variable<String>(worldId);
+    }
+    map['exportable'] = Variable<bool>(exportable);
+    map['created_at'] = Variable<int>(createdAt);
+    map['updated_at'] = Variable<int>(updatedAt);
+    return map;
+  }
+
+  WorldDraftsCompanion toCompanion(bool nullToAbsent) {
+    return WorldDraftsCompanion(
+      id: Value(id),
+      source: Value(source),
+      status: Value(status),
+      interview: interview == null && nullToAbsent
+          ? const Value.absent()
+          : Value(interview),
+      bibleDraft: bibleDraft == null && nullToAbsent
+          ? const Value.absent()
+          : Value(bibleDraft),
+      identities: identities == null && nullToAbsent
+          ? const Value.absent()
+          : Value(identities),
+      seeds: seeds == null && nullToAbsent
+          ? const Value.absent()
+          : Value(seeds),
+      quality: quality == null && nullToAbsent
+          ? const Value.absent()
+          : Value(quality),
+      importJobId: importJobId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(importJobId),
+      worldId: worldId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(worldId),
+      exportable: Value(exportable),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory WorldDraft.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return WorldDraft(
+      id: serializer.fromJson<String>(json['id']),
+      source: serializer.fromJson<String>(json['source']),
+      status: serializer.fromJson<String>(json['status']),
+      interview: serializer.fromJson<String?>(json['interview']),
+      bibleDraft: serializer.fromJson<String?>(json['bibleDraft']),
+      identities: serializer.fromJson<String?>(json['identities']),
+      seeds: serializer.fromJson<String?>(json['seeds']),
+      quality: serializer.fromJson<String?>(json['quality']),
+      importJobId: serializer.fromJson<String?>(json['importJobId']),
+      worldId: serializer.fromJson<String?>(json['worldId']),
+      exportable: serializer.fromJson<bool>(json['exportable']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'source': serializer.toJson<String>(source),
+      'status': serializer.toJson<String>(status),
+      'interview': serializer.toJson<String?>(interview),
+      'bibleDraft': serializer.toJson<String?>(bibleDraft),
+      'identities': serializer.toJson<String?>(identities),
+      'seeds': serializer.toJson<String?>(seeds),
+      'quality': serializer.toJson<String?>(quality),
+      'importJobId': serializer.toJson<String?>(importJobId),
+      'worldId': serializer.toJson<String?>(worldId),
+      'exportable': serializer.toJson<bool>(exportable),
+      'createdAt': serializer.toJson<int>(createdAt),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+    };
+  }
+
+  WorldDraft copyWith({
+    String? id,
+    String? source,
+    String? status,
+    Value<String?> interview = const Value.absent(),
+    Value<String?> bibleDraft = const Value.absent(),
+    Value<String?> identities = const Value.absent(),
+    Value<String?> seeds = const Value.absent(),
+    Value<String?> quality = const Value.absent(),
+    Value<String?> importJobId = const Value.absent(),
+    Value<String?> worldId = const Value.absent(),
+    bool? exportable,
+    int? createdAt,
+    int? updatedAt,
+  }) => WorldDraft(
+    id: id ?? this.id,
+    source: source ?? this.source,
+    status: status ?? this.status,
+    interview: interview.present ? interview.value : this.interview,
+    bibleDraft: bibleDraft.present ? bibleDraft.value : this.bibleDraft,
+    identities: identities.present ? identities.value : this.identities,
+    seeds: seeds.present ? seeds.value : this.seeds,
+    quality: quality.present ? quality.value : this.quality,
+    importJobId: importJobId.present ? importJobId.value : this.importJobId,
+    worldId: worldId.present ? worldId.value : this.worldId,
+    exportable: exportable ?? this.exportable,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  WorldDraft copyWithCompanion(WorldDraftsCompanion data) {
+    return WorldDraft(
+      id: data.id.present ? data.id.value : this.id,
+      source: data.source.present ? data.source.value : this.source,
+      status: data.status.present ? data.status.value : this.status,
+      interview: data.interview.present ? data.interview.value : this.interview,
+      bibleDraft: data.bibleDraft.present
+          ? data.bibleDraft.value
+          : this.bibleDraft,
+      identities: data.identities.present
+          ? data.identities.value
+          : this.identities,
+      seeds: data.seeds.present ? data.seeds.value : this.seeds,
+      quality: data.quality.present ? data.quality.value : this.quality,
+      importJobId: data.importJobId.present
+          ? data.importJobId.value
+          : this.importJobId,
+      worldId: data.worldId.present ? data.worldId.value : this.worldId,
+      exportable: data.exportable.present
+          ? data.exportable.value
+          : this.exportable,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WorldDraft(')
+          ..write('id: $id, ')
+          ..write('source: $source, ')
+          ..write('status: $status, ')
+          ..write('interview: $interview, ')
+          ..write('bibleDraft: $bibleDraft, ')
+          ..write('identities: $identities, ')
+          ..write('seeds: $seeds, ')
+          ..write('quality: $quality, ')
+          ..write('importJobId: $importJobId, ')
+          ..write('worldId: $worldId, ')
+          ..write('exportable: $exportable, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    source,
+    status,
+    interview,
+    bibleDraft,
+    identities,
+    seeds,
+    quality,
+    importJobId,
+    worldId,
+    exportable,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is WorldDraft &&
+          other.id == this.id &&
+          other.source == this.source &&
+          other.status == this.status &&
+          other.interview == this.interview &&
+          other.bibleDraft == this.bibleDraft &&
+          other.identities == this.identities &&
+          other.seeds == this.seeds &&
+          other.quality == this.quality &&
+          other.importJobId == this.importJobId &&
+          other.worldId == this.worldId &&
+          other.exportable == this.exportable &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class WorldDraftsCompanion extends UpdateCompanion<WorldDraft> {
+  final Value<String> id;
+  final Value<String> source;
+  final Value<String> status;
+  final Value<String?> interview;
+  final Value<String?> bibleDraft;
+  final Value<String?> identities;
+  final Value<String?> seeds;
+  final Value<String?> quality;
+  final Value<String?> importJobId;
+  final Value<String?> worldId;
+  final Value<bool> exportable;
+  final Value<int> createdAt;
+  final Value<int> updatedAt;
+  final Value<int> rowid;
+  const WorldDraftsCompanion({
+    this.id = const Value.absent(),
+    this.source = const Value.absent(),
+    this.status = const Value.absent(),
+    this.interview = const Value.absent(),
+    this.bibleDraft = const Value.absent(),
+    this.identities = const Value.absent(),
+    this.seeds = const Value.absent(),
+    this.quality = const Value.absent(),
+    this.importJobId = const Value.absent(),
+    this.worldId = const Value.absent(),
+    this.exportable = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  WorldDraftsCompanion.insert({
+    required String id,
+    required String source,
+    required String status,
+    this.interview = const Value.absent(),
+    this.bibleDraft = const Value.absent(),
+    this.identities = const Value.absent(),
+    this.seeds = const Value.absent(),
+    this.quality = const Value.absent(),
+    this.importJobId = const Value.absent(),
+    this.worldId = const Value.absent(),
+    this.exportable = const Value.absent(),
+    required int createdAt,
+    required int updatedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       source = Value(source),
+       status = Value(status),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<WorldDraft> custom({
+    Expression<String>? id,
+    Expression<String>? source,
+    Expression<String>? status,
+    Expression<String>? interview,
+    Expression<String>? bibleDraft,
+    Expression<String>? identities,
+    Expression<String>? seeds,
+    Expression<String>? quality,
+    Expression<String>? importJobId,
+    Expression<String>? worldId,
+    Expression<bool>? exportable,
+    Expression<int>? createdAt,
+    Expression<int>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (source != null) 'source': source,
+      if (status != null) 'status': status,
+      if (interview != null) 'interview': interview,
+      if (bibleDraft != null) 'bible_draft': bibleDraft,
+      if (identities != null) 'identities': identities,
+      if (seeds != null) 'seeds': seeds,
+      if (quality != null) 'quality': quality,
+      if (importJobId != null) 'import_job_id': importJobId,
+      if (worldId != null) 'world_id': worldId,
+      if (exportable != null) 'exportable': exportable,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  WorldDraftsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? source,
+    Value<String>? status,
+    Value<String?>? interview,
+    Value<String?>? bibleDraft,
+    Value<String?>? identities,
+    Value<String?>? seeds,
+    Value<String?>? quality,
+    Value<String?>? importJobId,
+    Value<String?>? worldId,
+    Value<bool>? exportable,
+    Value<int>? createdAt,
+    Value<int>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return WorldDraftsCompanion(
+      id: id ?? this.id,
+      source: source ?? this.source,
+      status: status ?? this.status,
+      interview: interview ?? this.interview,
+      bibleDraft: bibleDraft ?? this.bibleDraft,
+      identities: identities ?? this.identities,
+      seeds: seeds ?? this.seeds,
+      quality: quality ?? this.quality,
+      importJobId: importJobId ?? this.importJobId,
+      worldId: worldId ?? this.worldId,
+      exportable: exportable ?? this.exportable,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (interview.present) {
+      map['interview'] = Variable<String>(interview.value);
+    }
+    if (bibleDraft.present) {
+      map['bible_draft'] = Variable<String>(bibleDraft.value);
+    }
+    if (identities.present) {
+      map['identities'] = Variable<String>(identities.value);
+    }
+    if (seeds.present) {
+      map['seeds'] = Variable<String>(seeds.value);
+    }
+    if (quality.present) {
+      map['quality'] = Variable<String>(quality.value);
+    }
+    if (importJobId.present) {
+      map['import_job_id'] = Variable<String>(importJobId.value);
+    }
+    if (worldId.present) {
+      map['world_id'] = Variable<String>(worldId.value);
+    }
+    if (exportable.present) {
+      map['exportable'] = Variable<bool>(exportable.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WorldDraftsCompanion(')
+          ..write('id: $id, ')
+          ..write('source: $source, ')
+          ..write('status: $status, ')
+          ..write('interview: $interview, ')
+          ..write('bibleDraft: $bibleDraft, ')
+          ..write('identities: $identities, ')
+          ..write('seeds: $seeds, ')
+          ..write('quality: $quality, ')
+          ..write('importJobId: $importJobId, ')
+          ..write('worldId: $worldId, ')
+          ..write('exportable: $exportable, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $RunsTable extends Runs with TableInfo<$RunsTable, Run> {
   @override
   final GeneratedDatabase attachedDatabase;
@@ -1323,6 +2088,32 @@ class $RunsTable extends Runs with TableInfo<$RunsTable, Run> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _isTrialMeta = const VerificationMeta(
+    'isTrial',
+  );
+  @override
+  late final GeneratedColumn<bool> isTrial = GeneratedColumn<bool>(
+    'is_trial',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_trial" IN (0, 1))',
+    ),
+    clientDefault: () => false,
+  );
+  static const VerificationMeta _draftIdMeta = const VerificationMeta(
+    'draftId',
+  );
+  @override
+  late final GeneratedColumn<String> draftId = GeneratedColumn<String>(
+    'draft_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -1356,6 +2147,8 @@ class $RunsTable extends Runs with TableInfo<$RunsTable, Run> {
     turnNo,
     headSnapshotId,
     endingId,
+    isTrial,
+    draftId,
     createdAt,
     updatedAt,
   ];
@@ -1436,6 +2229,18 @@ class $RunsTable extends Runs with TableInfo<$RunsTable, Run> {
         endingId.isAcceptableOrUnknown(data['ending_id']!, _endingIdMeta),
       );
     }
+    if (data.containsKey('is_trial')) {
+      context.handle(
+        _isTrialMeta,
+        isTrial.isAcceptableOrUnknown(data['is_trial']!, _isTrialMeta),
+      );
+    }
+    if (data.containsKey('draft_id')) {
+      context.handle(
+        _draftIdMeta,
+        draftId.isAcceptableOrUnknown(data['draft_id']!, _draftIdMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -1497,6 +2302,14 @@ class $RunsTable extends Runs with TableInfo<$RunsTable, Run> {
         DriftSqlType.string,
         data['${effectivePrefix}ending_id'],
       ),
+      isTrial: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_trial'],
+      )!,
+      draftId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}draft_id'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}created_at'],
@@ -1524,6 +2337,8 @@ class Run extends DataClass implements Insertable<Run> {
   final int turnNo;
   final String? headSnapshotId;
   final String? endingId;
+  final bool isTrial;
+  final String? draftId;
   final int createdAt;
   final int updatedAt;
   const Run({
@@ -1536,6 +2351,8 @@ class Run extends DataClass implements Insertable<Run> {
     required this.turnNo,
     this.headSnapshotId,
     this.endingId,
+    required this.isTrial,
+    this.draftId,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -1554,6 +2371,10 @@ class Run extends DataClass implements Insertable<Run> {
     }
     if (!nullToAbsent || endingId != null) {
       map['ending_id'] = Variable<String>(endingId);
+    }
+    map['is_trial'] = Variable<bool>(isTrial);
+    if (!nullToAbsent || draftId != null) {
+      map['draft_id'] = Variable<String>(draftId);
     }
     map['created_at'] = Variable<int>(createdAt);
     map['updated_at'] = Variable<int>(updatedAt);
@@ -1575,6 +2396,10 @@ class Run extends DataClass implements Insertable<Run> {
       endingId: endingId == null && nullToAbsent
           ? const Value.absent()
           : Value(endingId),
+      isTrial: Value(isTrial),
+      draftId: draftId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(draftId),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -1595,6 +2420,8 @@ class Run extends DataClass implements Insertable<Run> {
       turnNo: serializer.fromJson<int>(json['turnNo']),
       headSnapshotId: serializer.fromJson<String?>(json['headSnapshotId']),
       endingId: serializer.fromJson<String?>(json['endingId']),
+      isTrial: serializer.fromJson<bool>(json['isTrial']),
+      draftId: serializer.fromJson<String?>(json['draftId']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
     );
@@ -1612,6 +2439,8 @@ class Run extends DataClass implements Insertable<Run> {
       'turnNo': serializer.toJson<int>(turnNo),
       'headSnapshotId': serializer.toJson<String?>(headSnapshotId),
       'endingId': serializer.toJson<String?>(endingId),
+      'isTrial': serializer.toJson<bool>(isTrial),
+      'draftId': serializer.toJson<String?>(draftId),
       'createdAt': serializer.toJson<int>(createdAt),
       'updatedAt': serializer.toJson<int>(updatedAt),
     };
@@ -1627,6 +2456,8 @@ class Run extends DataClass implements Insertable<Run> {
     int? turnNo,
     Value<String?> headSnapshotId = const Value.absent(),
     Value<String?> endingId = const Value.absent(),
+    bool? isTrial,
+    Value<String?> draftId = const Value.absent(),
     int? createdAt,
     int? updatedAt,
   }) => Run(
@@ -1641,6 +2472,8 @@ class Run extends DataClass implements Insertable<Run> {
         ? headSnapshotId.value
         : this.headSnapshotId,
     endingId: endingId.present ? endingId.value : this.endingId,
+    isTrial: isTrial ?? this.isTrial,
+    draftId: draftId.present ? draftId.value : this.draftId,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -1661,6 +2494,8 @@ class Run extends DataClass implements Insertable<Run> {
           ? data.headSnapshotId.value
           : this.headSnapshotId,
       endingId: data.endingId.present ? data.endingId.value : this.endingId,
+      isTrial: data.isTrial.present ? data.isTrial.value : this.isTrial,
+      draftId: data.draftId.present ? data.draftId.value : this.draftId,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -1678,6 +2513,8 @@ class Run extends DataClass implements Insertable<Run> {
           ..write('turnNo: $turnNo, ')
           ..write('headSnapshotId: $headSnapshotId, ')
           ..write('endingId: $endingId, ')
+          ..write('isTrial: $isTrial, ')
+          ..write('draftId: $draftId, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1695,6 +2532,8 @@ class Run extends DataClass implements Insertable<Run> {
     turnNo,
     headSnapshotId,
     endingId,
+    isTrial,
+    draftId,
     createdAt,
     updatedAt,
   );
@@ -1711,6 +2550,8 @@ class Run extends DataClass implements Insertable<Run> {
           other.turnNo == this.turnNo &&
           other.headSnapshotId == this.headSnapshotId &&
           other.endingId == this.endingId &&
+          other.isTrial == this.isTrial &&
+          other.draftId == this.draftId &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -1725,6 +2566,8 @@ class RunsCompanion extends UpdateCompanion<Run> {
   final Value<int> turnNo;
   final Value<String?> headSnapshotId;
   final Value<String?> endingId;
+  final Value<bool> isTrial;
+  final Value<String?> draftId;
   final Value<int> createdAt;
   final Value<int> updatedAt;
   final Value<int> rowid;
@@ -1738,6 +2581,8 @@ class RunsCompanion extends UpdateCompanion<Run> {
     this.turnNo = const Value.absent(),
     this.headSnapshotId = const Value.absent(),
     this.endingId = const Value.absent(),
+    this.isTrial = const Value.absent(),
+    this.draftId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1752,6 +2597,8 @@ class RunsCompanion extends UpdateCompanion<Run> {
     this.turnNo = const Value.absent(),
     this.headSnapshotId = const Value.absent(),
     this.endingId = const Value.absent(),
+    this.isTrial = const Value.absent(),
+    this.draftId = const Value.absent(),
     required int createdAt,
     required int updatedAt,
     this.rowid = const Value.absent(),
@@ -1771,6 +2618,8 @@ class RunsCompanion extends UpdateCompanion<Run> {
     Expression<int>? turnNo,
     Expression<String>? headSnapshotId,
     Expression<String>? endingId,
+    Expression<bool>? isTrial,
+    Expression<String>? draftId,
     Expression<int>? createdAt,
     Expression<int>? updatedAt,
     Expression<int>? rowid,
@@ -1785,6 +2634,8 @@ class RunsCompanion extends UpdateCompanion<Run> {
       if (turnNo != null) 'turn_no': turnNo,
       if (headSnapshotId != null) 'head_snapshot_id': headSnapshotId,
       if (endingId != null) 'ending_id': endingId,
+      if (isTrial != null) 'is_trial': isTrial,
+      if (draftId != null) 'draft_id': draftId,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -1801,6 +2652,8 @@ class RunsCompanion extends UpdateCompanion<Run> {
     Value<int>? turnNo,
     Value<String?>? headSnapshotId,
     Value<String?>? endingId,
+    Value<bool>? isTrial,
+    Value<String?>? draftId,
     Value<int>? createdAt,
     Value<int>? updatedAt,
     Value<int>? rowid,
@@ -1815,6 +2668,8 @@ class RunsCompanion extends UpdateCompanion<Run> {
       turnNo: turnNo ?? this.turnNo,
       headSnapshotId: headSnapshotId ?? this.headSnapshotId,
       endingId: endingId ?? this.endingId,
+      isTrial: isTrial ?? this.isTrial,
+      draftId: draftId ?? this.draftId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -1851,6 +2706,12 @@ class RunsCompanion extends UpdateCompanion<Run> {
     if (endingId.present) {
       map['ending_id'] = Variable<String>(endingId.value);
     }
+    if (isTrial.present) {
+      map['is_trial'] = Variable<bool>(isTrial.value);
+    }
+    if (draftId.present) {
+      map['draft_id'] = Variable<String>(draftId.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<int>(createdAt.value);
     }
@@ -1875,6 +2736,8 @@ class RunsCompanion extends UpdateCompanion<Run> {
           ..write('turnNo: $turnNo, ')
           ..write('headSnapshotId: $headSnapshotId, ')
           ..write('endingId: $endingId, ')
+          ..write('isTrial: $isTrial, ')
+          ..write('draftId: $draftId, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -4611,6 +5474,7 @@ abstract class _$AppDb extends GeneratedDatabase {
   $AppDbManager get managers => $AppDbManager(this);
   late final $WorldsTable worlds = $WorldsTable(this);
   late final $WorldVersionsTable worldVersions = $WorldVersionsTable(this);
+  late final $WorldDraftsTable worldDrafts = $WorldDraftsTable(this);
   late final $RunsTable runs = $RunsTable(this);
   late final $RunSnapshotsTable runSnapshots = $RunSnapshotsTable(this);
   late final $RunEventsTable runEvents = $RunEventsTable(this);
@@ -4621,6 +5485,10 @@ abstract class _$AppDb extends GeneratedDatabase {
   late final Index idxWvWorldVersion = Index(
     'idx_wv_world_version',
     'CREATE UNIQUE INDEX idx_wv_world_version ON world_versions (world_id, version)',
+  );
+  late final Index idxDraftsStatus = Index(
+    'idx_drafts_status',
+    'CREATE INDEX idx_drafts_status ON world_drafts (status, updated_at)',
   );
   late final Index idxRunsWorld = Index(
     'idx_runs_world',
@@ -4645,6 +5513,7 @@ abstract class _$AppDb extends GeneratedDatabase {
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     worlds,
     worldVersions,
+    worldDrafts,
     runs,
     runSnapshots,
     runEvents,
@@ -4653,6 +5522,7 @@ abstract class _$AppDb extends GeneratedDatabase {
     appSettings,
     localEvents,
     idxWvWorldVersion,
+    idxDraftsStatus,
     idxRunsWorld,
     idxSnapshotsRun,
     idxEventsRunTurn,
@@ -5249,6 +6119,360 @@ typedef $$WorldVersionsTableProcessedTableManager =
       WorldVersion,
       PrefetchHooks Function()
     >;
+typedef $$WorldDraftsTableCreateCompanionBuilder =
+    WorldDraftsCompanion Function({
+      required String id,
+      required String source,
+      required String status,
+      Value<String?> interview,
+      Value<String?> bibleDraft,
+      Value<String?> identities,
+      Value<String?> seeds,
+      Value<String?> quality,
+      Value<String?> importJobId,
+      Value<String?> worldId,
+      Value<bool> exportable,
+      required int createdAt,
+      required int updatedAt,
+      Value<int> rowid,
+    });
+typedef $$WorldDraftsTableUpdateCompanionBuilder =
+    WorldDraftsCompanion Function({
+      Value<String> id,
+      Value<String> source,
+      Value<String> status,
+      Value<String?> interview,
+      Value<String?> bibleDraft,
+      Value<String?> identities,
+      Value<String?> seeds,
+      Value<String?> quality,
+      Value<String?> importJobId,
+      Value<String?> worldId,
+      Value<bool> exportable,
+      Value<int> createdAt,
+      Value<int> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$WorldDraftsTableFilterComposer
+    extends Composer<_$AppDb, $WorldDraftsTable> {
+  $$WorldDraftsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get interview => $composableBuilder(
+    column: $table.interview,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get bibleDraft => $composableBuilder(
+    column: $table.bibleDraft,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get identities => $composableBuilder(
+    column: $table.identities,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get seeds => $composableBuilder(
+    column: $table.seeds,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get quality => $composableBuilder(
+    column: $table.quality,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get importJobId => $composableBuilder(
+    column: $table.importJobId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get worldId => $composableBuilder(
+    column: $table.worldId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get exportable => $composableBuilder(
+    column: $table.exportable,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$WorldDraftsTableOrderingComposer
+    extends Composer<_$AppDb, $WorldDraftsTable> {
+  $$WorldDraftsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get interview => $composableBuilder(
+    column: $table.interview,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get bibleDraft => $composableBuilder(
+    column: $table.bibleDraft,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get identities => $composableBuilder(
+    column: $table.identities,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get seeds => $composableBuilder(
+    column: $table.seeds,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get quality => $composableBuilder(
+    column: $table.quality,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get importJobId => $composableBuilder(
+    column: $table.importJobId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get worldId => $composableBuilder(
+    column: $table.worldId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get exportable => $composableBuilder(
+    column: $table.exportable,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$WorldDraftsTableAnnotationComposer
+    extends Composer<_$AppDb, $WorldDraftsTable> {
+  $$WorldDraftsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get interview =>
+      $composableBuilder(column: $table.interview, builder: (column) => column);
+
+  GeneratedColumn<String> get bibleDraft => $composableBuilder(
+    column: $table.bibleDraft,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get identities => $composableBuilder(
+    column: $table.identities,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get seeds =>
+      $composableBuilder(column: $table.seeds, builder: (column) => column);
+
+  GeneratedColumn<String> get quality =>
+      $composableBuilder(column: $table.quality, builder: (column) => column);
+
+  GeneratedColumn<String> get importJobId => $composableBuilder(
+    column: $table.importJobId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get worldId =>
+      $composableBuilder(column: $table.worldId, builder: (column) => column);
+
+  GeneratedColumn<bool> get exportable => $composableBuilder(
+    column: $table.exportable,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$WorldDraftsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDb,
+          $WorldDraftsTable,
+          WorldDraft,
+          $$WorldDraftsTableFilterComposer,
+          $$WorldDraftsTableOrderingComposer,
+          $$WorldDraftsTableAnnotationComposer,
+          $$WorldDraftsTableCreateCompanionBuilder,
+          $$WorldDraftsTableUpdateCompanionBuilder,
+          (WorldDraft, BaseReferences<_$AppDb, $WorldDraftsTable, WorldDraft>),
+          WorldDraft,
+          PrefetchHooks Function()
+        > {
+  $$WorldDraftsTableTableManager(_$AppDb db, $WorldDraftsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$WorldDraftsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$WorldDraftsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$WorldDraftsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> source = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String?> interview = const Value.absent(),
+                Value<String?> bibleDraft = const Value.absent(),
+                Value<String?> identities = const Value.absent(),
+                Value<String?> seeds = const Value.absent(),
+                Value<String?> quality = const Value.absent(),
+                Value<String?> importJobId = const Value.absent(),
+                Value<String?> worldId = const Value.absent(),
+                Value<bool> exportable = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => WorldDraftsCompanion(
+                id: id,
+                source: source,
+                status: status,
+                interview: interview,
+                bibleDraft: bibleDraft,
+                identities: identities,
+                seeds: seeds,
+                quality: quality,
+                importJobId: importJobId,
+                worldId: worldId,
+                exportable: exportable,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String source,
+                required String status,
+                Value<String?> interview = const Value.absent(),
+                Value<String?> bibleDraft = const Value.absent(),
+                Value<String?> identities = const Value.absent(),
+                Value<String?> seeds = const Value.absent(),
+                Value<String?> quality = const Value.absent(),
+                Value<String?> importJobId = const Value.absent(),
+                Value<String?> worldId = const Value.absent(),
+                Value<bool> exportable = const Value.absent(),
+                required int createdAt,
+                required int updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => WorldDraftsCompanion.insert(
+                id: id,
+                source: source,
+                status: status,
+                interview: interview,
+                bibleDraft: bibleDraft,
+                identities: identities,
+                seeds: seeds,
+                quality: quality,
+                importJobId: importJobId,
+                worldId: worldId,
+                exportable: exportable,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$WorldDraftsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDb,
+      $WorldDraftsTable,
+      WorldDraft,
+      $$WorldDraftsTableFilterComposer,
+      $$WorldDraftsTableOrderingComposer,
+      $$WorldDraftsTableAnnotationComposer,
+      $$WorldDraftsTableCreateCompanionBuilder,
+      $$WorldDraftsTableUpdateCompanionBuilder,
+      (WorldDraft, BaseReferences<_$AppDb, $WorldDraftsTable, WorldDraft>),
+      WorldDraft,
+      PrefetchHooks Function()
+    >;
 typedef $$RunsTableCreateCompanionBuilder =
     RunsCompanion Function({
       required String id,
@@ -5260,6 +6484,8 @@ typedef $$RunsTableCreateCompanionBuilder =
       Value<int> turnNo,
       Value<String?> headSnapshotId,
       Value<String?> endingId,
+      Value<bool> isTrial,
+      Value<String?> draftId,
       required int createdAt,
       required int updatedAt,
       Value<int> rowid,
@@ -5275,6 +6501,8 @@ typedef $$RunsTableUpdateCompanionBuilder =
       Value<int> turnNo,
       Value<String?> headSnapshotId,
       Value<String?> endingId,
+      Value<bool> isTrial,
+      Value<String?> draftId,
       Value<int> createdAt,
       Value<int> updatedAt,
       Value<int> rowid,
@@ -5330,6 +6558,16 @@ class $$RunsTableFilterComposer extends Composer<_$AppDb, $RunsTable> {
 
   ColumnFilters<String> get endingId => $composableBuilder(
     column: $table.endingId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isTrial => $composableBuilder(
+    column: $table.isTrial,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get draftId => $composableBuilder(
+    column: $table.draftId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5397,6 +6635,16 @@ class $$RunsTableOrderingComposer extends Composer<_$AppDb, $RunsTable> {
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get isTrial => $composableBuilder(
+    column: $table.isTrial,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get draftId => $composableBuilder(
+    column: $table.draftId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -5449,6 +6697,12 @@ class $$RunsTableAnnotationComposer extends Composer<_$AppDb, $RunsTable> {
   GeneratedColumn<String> get endingId =>
       $composableBuilder(column: $table.endingId, builder: (column) => column);
 
+  GeneratedColumn<bool> get isTrial =>
+      $composableBuilder(column: $table.isTrial, builder: (column) => column);
+
+  GeneratedColumn<String> get draftId =>
+      $composableBuilder(column: $table.draftId, builder: (column) => column);
+
   GeneratedColumn<int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -5493,6 +6747,8 @@ class $$RunsTableTableManager
                 Value<int> turnNo = const Value.absent(),
                 Value<String?> headSnapshotId = const Value.absent(),
                 Value<String?> endingId = const Value.absent(),
+                Value<bool> isTrial = const Value.absent(),
+                Value<String?> draftId = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
                 Value<int> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -5506,6 +6762,8 @@ class $$RunsTableTableManager
                 turnNo: turnNo,
                 headSnapshotId: headSnapshotId,
                 endingId: endingId,
+                isTrial: isTrial,
+                draftId: draftId,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -5521,6 +6779,8 @@ class $$RunsTableTableManager
                 Value<int> turnNo = const Value.absent(),
                 Value<String?> headSnapshotId = const Value.absent(),
                 Value<String?> endingId = const Value.absent(),
+                Value<bool> isTrial = const Value.absent(),
+                Value<String?> draftId = const Value.absent(),
                 required int createdAt,
                 required int updatedAt,
                 Value<int> rowid = const Value.absent(),
@@ -5534,6 +6794,8 @@ class $$RunsTableTableManager
                 turnNo: turnNo,
                 headSnapshotId: headSnapshotId,
                 endingId: endingId,
+                isTrial: isTrial,
+                draftId: draftId,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -6956,6 +8218,8 @@ class $AppDbManager {
       $$WorldsTableTableManager(_db, _db.worlds);
   $$WorldVersionsTableTableManager get worldVersions =>
       $$WorldVersionsTableTableManager(_db, _db.worldVersions);
+  $$WorldDraftsTableTableManager get worldDrafts =>
+      $$WorldDraftsTableTableManager(_db, _db.worldDrafts);
   $$RunsTableTableManager get runs => $$RunsTableTableManager(_db, _db.runs);
   $$RunSnapshotsTableTableManager get runSnapshots =>
       $$RunSnapshotsTableTableManager(_db, _db.runSnapshots);

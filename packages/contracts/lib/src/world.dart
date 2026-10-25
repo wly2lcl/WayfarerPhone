@@ -330,7 +330,7 @@ class NpcPublic {
       {'appearance': appearance, 'manner': manner, 'affiliation': affiliation};
 
   static NpcPublic fromJson(Object? j) {
-    final m = rawMap(j);
+    final m = rawMapOr(j);
     return NpcPublic(
       appearance: asSOr(m['appearance'], ''),
       manner: asSOr(m['manner'], ''),
@@ -360,7 +360,7 @@ class NpcPrivate {
       };
 
   static NpcPrivate fromJson(Object? j) {
-    final m = rawMap(j);
+    final m = rawMapOr(j);
     return NpcPrivate(
       secret: asSOr(m['secret'], ''),
       motive: asSOr(m['motive'], ''),
@@ -445,12 +445,12 @@ class SeedCondition {
       };
 
   static SeedCondition fromJson(Object? j) {
-    final m = rawMap(j);
+    final m = rawMapOr(j);
     return SeedCondition(
       chapterMin: asI(m['chapterMin']),
       chapterMax: asI(m['chapterMax']),
       realmMin: asS(m['realmMin']),
-      flags: rawMap(m['flags']),
+      flags: rawMapOr(m['flags']),
       knowledge: asList<String>(m['knowledge'], (e) => asSOr(e, '')),
       placeId: asS(m['placeId']),
     );
@@ -471,7 +471,7 @@ class SeedEffects {
       };
 
   static SeedEffects fromJson(Object? j) {
-    final m = rawMap(j);
+    final m = rawMapOr(j);
     return SeedEffects(
       danger: enumBy(Danger.values, m['danger'], Danger.low),
       threadId: asS(m['threadId']),
@@ -622,9 +622,10 @@ class WorldBible {
       factions: asList<Faction>(m['factions'], Faction.fromJson),
       powerSystem: PowerSystem.fromJson(m['powerSystem']),
       taboos: asList<String>(m['taboos'], (e) => asSOr(e, '')),
-      npcPool: asList<NpcSeed>(m['npcPool'], NpcSeed.fromJson),
-      eventSeeds: asList<EventSeed>(m['eventSeeds'], EventSeed.fromJson),
-      endgame: asList<EndingRule>(m['endgame'], EndingRule.fromJson),
+      npcPool: asListOfMaps<NpcSeed>(m['npcPool'], NpcSeed.fromJson),
+      eventSeeds:
+          asListOfMaps<EventSeed>(m['eventSeeds'], EventSeed.fromJson),
+      endgame: asListOfMaps<EndingRule>(m['endgame'], EndingRule.fromJson),
     );
   }
 

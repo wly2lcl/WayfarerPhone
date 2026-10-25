@@ -13,6 +13,7 @@ import '../llm/settings.dart';
 import '../prompts/roles.dart';
 import '../rules/ending.dart';
 import '../rules/resolver.dart';
+import '../world_draft/draft_package.dart';
 import 'apply.dart';
 import 'context.dart';
 import 'queue.dart';
@@ -74,18 +75,16 @@ class TurnEngine {
       return;
     }
 
-    final version = await (db.select(db.worldVersions)
-          ..where((v) =>
-              v.worldId.equals(head.worldId) &
-              v.version.equals(head.worldVersion)))
-        .getSingleOrNull();
-    if (version == null) {
-      emit(TurnError(EngineCode.notFound.wireName, '世界版本缺失', false));
+    final WorldBible bible;
+    final List<Identity> identityList;
+    try {
+      final pkg = await loadRunPackage(db, head);
+      bible = pkg.bible;
+      identityList = pkg.identities;
+    } on EngineException catch (e) {
+      emit(TurnError(e.code.wireName, e.message, false));
       return;
     }
-    final bible = WorldBible.fromJson(jsonDecode(version.bible));
-    final identityList =
-        asList<Identity>(jsonDecode(version.identities), Identity.fromJson);
     final identity = identityList
         .where((i) => i.id == head.identityId)
         .firstOrNull;

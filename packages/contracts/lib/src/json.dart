@@ -19,6 +19,9 @@ Map<String, T> asMap<T>(Object? v, T Function(Object?) f) => (v as Map?)
 
 Map<String, Object?> rawMap(Object? v) => asMap<Object?>(v, (e) => e);
 
+/// 解析模型输出专用：偶发把对象字段写成字符串/数组时降级为空对象，不炸整个解析
+Map<String, Object?> rawMapOr(Object? v) => v is Map ? rawMap(v) : const {};
+
 T enumBy<T extends Enum>(List<T> values, Object? v, T fallback) {
   final s = asS(v);
   if (s == null) return fallback;

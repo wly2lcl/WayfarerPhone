@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/ui/paper.dart';
 import 'worlds_provider.dart';
 
-/// 世界详情：基调介绍 + 「进入苍梧」
+/// 世界详情：基调介绍 + 进入开局
 class WorldDetailPage extends ConsumerWidget {
   const WorldDetailPage({super.key, required this.worldId});
 
@@ -71,7 +71,8 @@ class WorldDetailPage extends ConsumerWidget {
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
-                  child: const Text('进入苍梧', style: TextStyle(fontSize: 16, letterSpacing: 4)),
+                  child: Text('进入${world.title}',
+                      style: TextStyle(fontSize: 16, letterSpacing: 4)),
                 ),
               ],
             ),

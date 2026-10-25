@@ -18,6 +18,8 @@ class RunHead {
 
   /// 仅 listRuns 填充：按世界版本 bible 解析出的终局名（展示用）
   final String? endingTitle;
+  final bool isTrial;
+  final String? draftId;
   final RunState? state;
 
   RunHead({
@@ -31,6 +33,8 @@ class RunHead {
     this.headSnapshotId,
     this.endingId,
     this.endingTitle,
+    this.isTrial = false,
+    this.draftId,
     this.state,
   });
 }
@@ -75,6 +79,8 @@ class RunsDao {
       turnNo: r.turnNo,
       headSnapshotId: r.headSnapshotId,
       endingId: r.endingId,
+      isTrial: r.isTrial,
+      draftId: r.draftId,
     );
   }
 
@@ -173,6 +179,8 @@ class RunsDao {
     required int worldVersion,
     required String identityId,
     required RunState initialState,
+    bool isTrial = false,
+    String? draftId,
   }) async {
     final now = DateTime.now().millisecondsSinceEpoch;
     final snapshotId = 's_${runId.substring(2)}_0000';
@@ -184,6 +192,8 @@ class RunsDao {
             identityId: identityId,
             createdAt: now,
             updatedAt: now,
+            isTrial: Value(isTrial),
+            draftId: Value(draftId),
             turnNo: Value(initialState.meta.turnNo),
             chapter: Value(initialState.meta.chapter),
           ));
