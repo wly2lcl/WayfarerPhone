@@ -21,3 +21,6 @@ apps/mobile/android/app/.cxx/
 # ios
 apps/mobile/ios/Pods/
 apps/mobile/ios/.symlinks/
+
+# macOS
+.DS_Store

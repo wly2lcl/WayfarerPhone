@@ -9,6 +9,7 @@ import '../features/worlds/world_detail_page.dart';
 import '../features/worlds/worlds_page.dart';
 import '../features/workshop/create_page.dart';
 import '../features/workshop/editor_page.dart';
+import '../features/workshop/import_page.dart';
 import '../features/workshop/workshop_page.dart';
 
 /// 全局路由：
@@ -37,6 +38,10 @@ final GoRouter appRouter = GoRouter(
       path: '/workshop/create/:draftId',
       builder: (context, state) =>
           CreatePage(draftId: state.pathParameters['draftId']!),
+    ),
+    GoRoute(
+      path: '/workshop/import',
+      builder: (context, state) => const ImportWizardPage(),
     ),
     GoRoute(
       path: '/workshop/edit/:draftId',

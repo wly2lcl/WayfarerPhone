@@ -53,8 +53,8 @@ class EngineException implements Exception {
 | `CONTENT_BLOCKED` | 输入或生成命中本地规则 | 引导换一种表达 |
 | `STATE_INVALID` | 状态校验不可恢复 | 上报日志，允许回滚快照 |
 | `STORAGE_FULL` | 本地磁盘不足 | 提示清理旧局或导出 |
-| `IMPORT_INVALID` | `.world` / `.run` 包结构、校验和或格式版本不通过 | 展示具体原因 |
-| `IMPORT_TOO_LARGE` | 超过 20 MB 或解压后超限 | 拒绝 |
+| `IMPORT_INVALID` | `.world` / `.run` 包结构、校验和或格式版本不通过；TXT 导入中文件不存在 / 编码无法识别 / 内容与任务记录不一致 | 展示具体原因 |
+| `IMPORT_TOO_LARGE` | 超过 20 MB 或解压后超限（TXT 导入与包导入同一上限） | 拒绝 |
 | `EXPORT_FORBIDDEN` | 该世界 `exportable = 0`，或所属世界不可导出导致该局 `.run` 不可导出 | 说明为导入来源，不可导出 |
 | `DRAFT_INCOMPLETE` | 草稿完整度不足，不可生成或冻结 | 展示缺失字段，回到访谈 |
 | `QUALITY_GATE_FAILED` | 一致性检查存在 `error` 级问题 | 打开编辑器定位问题项 |
@@ -91,6 +91,13 @@ class EngineException implements Exception {
 | `drafts.discardTrial(draftId)` | 丢弃试玩局，草稿状态回 `review` |
 | `drafts.freeze(draftId)` | 冻结为本地版本（`world_versions` 版本 +1） |
 | `drafts.delete(draftId)` | 删除草稿、访谈记录与试玩局 |
+| `imports.start(path, {fidelity})` | 导入 TXT（已拷入沙盒后调用）：解码分块 → 逐块抽取 → 归并 → 生成圣经，返回任务视图；`fidelity` 选合成档位（§4.6）；同 `content_hash` 重复导入命中已有任务（进行中自动续跑） |
+| `imports.resume(jobId)` | 断点续跑：跳过 `import_chunks` 已完成块继续抽取 |
+| `imports.progress(jobId)` | 任务进度视图（stage / done / total / stats） |
+| `imports.listJobs({limit})` | 最近导入任务列表 |
+| `imports.entities(jobId)` | 归并后的实体列表（审阅用） |
+| `imports.updateEntities(jobId, {removeKeys, mergeInto})` | 实体审阅：删除 / 合并（频次、别名、属性并入目标），采纳率 = 现存 / entitiesTotal |
+| `imports.regenerate(jobId, {fidelity})` | 用审阅后的实体重新生成世界（仅 draft 状态可重跑），可换合成档位 |
 | `library.import(File)` | 导入 `.world` 包 |
 | `library.export(worldId)` | 导出 `.world` 包，返回文件路径 |
 | `library.rename(worldId, title)` | 重命名本地世界 |
@@ -227,7 +234,31 @@ final r = await engine.drafts.freeze(view.id);        // FreezeResult(worldId, v
 - `trial` 返回的局不进 `runs.list()`；序章事件与正式局同构（`narration` + `choice`）
 - `freeze` 幂等规则：内容 checksum 未变时抛 `WORLD_FROZEN`；已冻结草稿继续修改可再冻结出 v2、v3…
 
-### library.export() / library.import()（未实现，M1+）
+### imports.*()（M2 小说导入，已实现）
+
+```dart
+final job = await engine.imports.start(
+    path, fidelity: ImportFidelity.standard); // TXT 已由客户端经 SAF 拷入沙盒私有目录
+// ImportJobView(id, stage, error, draftId, stats{chunks,chapters}, done, total,
+//               entitiesTotal, fidelity)   // 档位见[世界创造与导入](./世界创造与导入.md) §4.6
+final cur = await engine.imports.progress(job.id);
+final list = await engine.imports.entities(job.id);      // List<ImportEntity>
+await engine.imports.updateEntities(job.id,
+    removeKeys: ['路人甲'], mergeInto: {'九爷': '沈青'});   // 删除 / 合并别名
+final again = await engine.imports.regenerate(job.id,
+    fidelity: ImportFidelity.faithful);                  // 生成失败回滚后重跑，可换档
+await engine.imports.resume(job.id);                     // 杀进程后断点续跑（沿用原档位）
+```
+
+- 阶段机：`queued → parsing → extracting → merging →（忠实档 compressing）→ review`；任一块抽取终失败 → `failed`（已完成块保留在 `import_chunks`，`resume` 从断点继续）
+- 合成档位（`ImportFidelity.fast/standard/faithful`，默认 fast 兼容旧行为）：`start` 时选择；忠实档在合成前把全书分块摘要压缩为卷级脉络（`compressing` 阶段），压缩失败自动降级标准采样、任务不失败
+- `start()` 去重：同 `content_hash` 已有任务时，进行中（queued/extracting/merging/compressing）自动转 `resume`，终态直接返回原任务视图
+- 覆盖率闸门（§4.4）：覆盖率 < 0.8 时在草稿 `quality.issues` 追加 `IMPORT_COVERAGE_LOW`（error 级，阻塞试玩不阻塞冻结重跑）；在导入向导展示并可 `regenerate` 重跑
+- 实体审阅边界：`updateEntities` 仅 `stage == 'review'` 可用（否则 `STATE_INVALID`）；`regenerate` 仅草稿 `status == 'draft'`（即上次生成失败回滚后）可调用，已进入审阅的世界请在编辑器修改
+- 采纳率 = 审阅后现存实体数 / `entitiesTotal`（归并基准，客户端向导展示）
+- `source=import` 的草稿与冻结世界 `exportable=false`（数据层固化，见[世界创造与导入](./世界创造与导入.md) §4.7）；导入原文只存沙盒 `files/imports/`，不进任何导出路径
+
+### library.export() / library.import()（未实现，M3）
 
 > 规划接口，当前引擎与客户端均未提供。目标语义：导出前置检查 `worlds.exportable = 1`，否则 `EXPORT_FORBIDDEN`；包格式与校验规则见[世界分享与本地世界库](./世界分享与UGC.md) §4。实现排期见 TODO 的 M1/M2 条目。
 
@@ -369,3 +400,5 @@ class TurnError        extends TurnEvent { final EngineCode code; final String m
 | 2026-10-23 | v0.2：改为本地引擎门面 + 模型网关契约；删除账号、配额、409、幂等键与服务端错误码 |
 | 2026-10-23 | v0.3：新增三种模型协议适配、供应商预设、`.run` 存档包导入导出 |
 | 2026-10-24 | v0.4：M1 世界工坊接口——§2/§3 新增 `drafts.*()`（create/interview/generate/detail/save/trial/discardTrial/freeze/delete），`DraftView` 与质量门语义；`runs.list()` 标注不含试玩局；`WORLD_FROZEN` 对齐实现（重复冻结同码） |
+| 2026-10-25 | v0.5：M2 小说导入接口——§2/§3 新增 `imports.*()`（start/resume/progress/listJobs/entities/updateEntities/regenerate），ImportJobView 阶段机、start 去重续跑、覆盖率闸门与实体审阅边界；`IMPORT_INVALID`/`IMPORT_TOO_LARGE` 错误码含义扩展到 TXT 导入；library.export/import 标注 M3 |
+| 2026-10-26 | v0.6：合成档位——`imports.start(path, {fidelity})` / `imports.regenerate(jobId, {fidelity})` 带 `ImportFidelity`（fast/standard/faithful，默认 fast）；阶段机加忠实档 `compressing`（压缩失败自动降级标准采样）；start 去重进行中集合加 compressing；ImportJobView 增 `fidelity` 字段 |

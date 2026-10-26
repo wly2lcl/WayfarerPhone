@@ -4472,6 +4472,81 @@ class $ImportJobsTable extends ImportJobs
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _draftIdMeta = const VerificationMeta(
+    'draftId',
+  );
+  @override
+  late final GeneratedColumn<String> draftId = GeneratedColumn<String>(
+    'draft_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _doneMeta = const VerificationMeta('done');
+  @override
+  late final GeneratedColumn<int> done = GeneratedColumn<int>(
+    'done',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    clientDefault: () => 0,
+  );
+  static const VerificationMeta _totalMeta = const VerificationMeta('total');
+  @override
+  late final GeneratedColumn<int> total = GeneratedColumn<int>(
+    'total',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    clientDefault: () => 0,
+  );
+  static const VerificationMeta _statsMeta = const VerificationMeta('stats');
+  @override
+  late final GeneratedColumn<String> stats = GeneratedColumn<String>(
+    'stats',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _entitiesMeta = const VerificationMeta(
+    'entities',
+  );
+  @override
+  late final GeneratedColumn<String> entities = GeneratedColumn<String>(
+    'entities',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _entitiesTotalMeta = const VerificationMeta(
+    'entitiesTotal',
+  );
+  @override
+  late final GeneratedColumn<int> entitiesTotal = GeneratedColumn<int>(
+    'entities_total',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    clientDefault: () => 0,
+  );
+  static const VerificationMeta _fidelityMeta = const VerificationMeta(
+    'fidelity',
+  );
+  @override
+  late final GeneratedColumn<int> fidelity = GeneratedColumn<int>(
+    'fidelity',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    clientDefault: () => 0,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -4502,6 +4577,13 @@ class $ImportJobsTable extends ImportJobs
     stage,
     progress,
     error,
+    draftId,
+    done,
+    total,
+    stats,
+    entities,
+    entitiesTotal,
+    fidelity,
     createdAt,
     updatedAt,
   ];
@@ -4561,6 +4643,51 @@ class $ImportJobsTable extends ImportJobs
         error.isAcceptableOrUnknown(data['error']!, _errorMeta),
       );
     }
+    if (data.containsKey('draft_id')) {
+      context.handle(
+        _draftIdMeta,
+        draftId.isAcceptableOrUnknown(data['draft_id']!, _draftIdMeta),
+      );
+    }
+    if (data.containsKey('done')) {
+      context.handle(
+        _doneMeta,
+        done.isAcceptableOrUnknown(data['done']!, _doneMeta),
+      );
+    }
+    if (data.containsKey('total')) {
+      context.handle(
+        _totalMeta,
+        total.isAcceptableOrUnknown(data['total']!, _totalMeta),
+      );
+    }
+    if (data.containsKey('stats')) {
+      context.handle(
+        _statsMeta,
+        stats.isAcceptableOrUnknown(data['stats']!, _statsMeta),
+      );
+    }
+    if (data.containsKey('entities')) {
+      context.handle(
+        _entitiesMeta,
+        entities.isAcceptableOrUnknown(data['entities']!, _entitiesMeta),
+      );
+    }
+    if (data.containsKey('entities_total')) {
+      context.handle(
+        _entitiesTotalMeta,
+        entitiesTotal.isAcceptableOrUnknown(
+          data['entities_total']!,
+          _entitiesTotalMeta,
+        ),
+      );
+    }
+    if (data.containsKey('fidelity')) {
+      context.handle(
+        _fidelityMeta,
+        fidelity.isAcceptableOrUnknown(data['fidelity']!, _fidelityMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -4610,6 +4737,34 @@ class $ImportJobsTable extends ImportJobs
         DriftSqlType.string,
         data['${effectivePrefix}error'],
       ),
+      draftId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}draft_id'],
+      ),
+      done: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}done'],
+      )!,
+      total: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}total'],
+      )!,
+      stats: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}stats'],
+      ),
+      entities: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}entities'],
+      ),
+      entitiesTotal: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}entities_total'],
+      )!,
+      fidelity: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}fidelity'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}created_at'],
@@ -4634,6 +4789,13 @@ class ImportJob extends DataClass implements Insertable<ImportJob> {
   final String stage;
   final double progress;
   final String? error;
+  final String? draftId;
+  final int done;
+  final int total;
+  final String? stats;
+  final String? entities;
+  final int entitiesTotal;
+  final int fidelity;
   final int createdAt;
   final int updatedAt;
   const ImportJob({
@@ -4643,6 +4805,13 @@ class ImportJob extends DataClass implements Insertable<ImportJob> {
     required this.stage,
     required this.progress,
     this.error,
+    this.draftId,
+    required this.done,
+    required this.total,
+    this.stats,
+    this.entities,
+    required this.entitiesTotal,
+    required this.fidelity,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -4657,6 +4826,19 @@ class ImportJob extends DataClass implements Insertable<ImportJob> {
     if (!nullToAbsent || error != null) {
       map['error'] = Variable<String>(error);
     }
+    if (!nullToAbsent || draftId != null) {
+      map['draft_id'] = Variable<String>(draftId);
+    }
+    map['done'] = Variable<int>(done);
+    map['total'] = Variable<int>(total);
+    if (!nullToAbsent || stats != null) {
+      map['stats'] = Variable<String>(stats);
+    }
+    if (!nullToAbsent || entities != null) {
+      map['entities'] = Variable<String>(entities);
+    }
+    map['entities_total'] = Variable<int>(entitiesTotal);
+    map['fidelity'] = Variable<int>(fidelity);
     map['created_at'] = Variable<int>(createdAt);
     map['updated_at'] = Variable<int>(updatedAt);
     return map;
@@ -4672,6 +4854,19 @@ class ImportJob extends DataClass implements Insertable<ImportJob> {
       error: error == null && nullToAbsent
           ? const Value.absent()
           : Value(error),
+      draftId: draftId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(draftId),
+      done: Value(done),
+      total: Value(total),
+      stats: stats == null && nullToAbsent
+          ? const Value.absent()
+          : Value(stats),
+      entities: entities == null && nullToAbsent
+          ? const Value.absent()
+          : Value(entities),
+      entitiesTotal: Value(entitiesTotal),
+      fidelity: Value(fidelity),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -4689,6 +4884,13 @@ class ImportJob extends DataClass implements Insertable<ImportJob> {
       stage: serializer.fromJson<String>(json['stage']),
       progress: serializer.fromJson<double>(json['progress']),
       error: serializer.fromJson<String?>(json['error']),
+      draftId: serializer.fromJson<String?>(json['draftId']),
+      done: serializer.fromJson<int>(json['done']),
+      total: serializer.fromJson<int>(json['total']),
+      stats: serializer.fromJson<String?>(json['stats']),
+      entities: serializer.fromJson<String?>(json['entities']),
+      entitiesTotal: serializer.fromJson<int>(json['entitiesTotal']),
+      fidelity: serializer.fromJson<int>(json['fidelity']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
     );
@@ -4703,6 +4905,13 @@ class ImportJob extends DataClass implements Insertable<ImportJob> {
       'stage': serializer.toJson<String>(stage),
       'progress': serializer.toJson<double>(progress),
       'error': serializer.toJson<String?>(error),
+      'draftId': serializer.toJson<String?>(draftId),
+      'done': serializer.toJson<int>(done),
+      'total': serializer.toJson<int>(total),
+      'stats': serializer.toJson<String?>(stats),
+      'entities': serializer.toJson<String?>(entities),
+      'entitiesTotal': serializer.toJson<int>(entitiesTotal),
+      'fidelity': serializer.toJson<int>(fidelity),
       'createdAt': serializer.toJson<int>(createdAt),
       'updatedAt': serializer.toJson<int>(updatedAt),
     };
@@ -4715,6 +4924,13 @@ class ImportJob extends DataClass implements Insertable<ImportJob> {
     String? stage,
     double? progress,
     Value<String?> error = const Value.absent(),
+    Value<String?> draftId = const Value.absent(),
+    int? done,
+    int? total,
+    Value<String?> stats = const Value.absent(),
+    Value<String?> entities = const Value.absent(),
+    int? entitiesTotal,
+    int? fidelity,
     int? createdAt,
     int? updatedAt,
   }) => ImportJob(
@@ -4724,6 +4940,13 @@ class ImportJob extends DataClass implements Insertable<ImportJob> {
     stage: stage ?? this.stage,
     progress: progress ?? this.progress,
     error: error.present ? error.value : this.error,
+    draftId: draftId.present ? draftId.value : this.draftId,
+    done: done ?? this.done,
+    total: total ?? this.total,
+    stats: stats.present ? stats.value : this.stats,
+    entities: entities.present ? entities.value : this.entities,
+    entitiesTotal: entitiesTotal ?? this.entitiesTotal,
+    fidelity: fidelity ?? this.fidelity,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -4739,6 +4962,15 @@ class ImportJob extends DataClass implements Insertable<ImportJob> {
       stage: data.stage.present ? data.stage.value : this.stage,
       progress: data.progress.present ? data.progress.value : this.progress,
       error: data.error.present ? data.error.value : this.error,
+      draftId: data.draftId.present ? data.draftId.value : this.draftId,
+      done: data.done.present ? data.done.value : this.done,
+      total: data.total.present ? data.total.value : this.total,
+      stats: data.stats.present ? data.stats.value : this.stats,
+      entities: data.entities.present ? data.entities.value : this.entities,
+      entitiesTotal: data.entitiesTotal.present
+          ? data.entitiesTotal.value
+          : this.entitiesTotal,
+      fidelity: data.fidelity.present ? data.fidelity.value : this.fidelity,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -4753,6 +4985,13 @@ class ImportJob extends DataClass implements Insertable<ImportJob> {
           ..write('stage: $stage, ')
           ..write('progress: $progress, ')
           ..write('error: $error, ')
+          ..write('draftId: $draftId, ')
+          ..write('done: $done, ')
+          ..write('total: $total, ')
+          ..write('stats: $stats, ')
+          ..write('entities: $entities, ')
+          ..write('entitiesTotal: $entitiesTotal, ')
+          ..write('fidelity: $fidelity, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -4767,6 +5006,13 @@ class ImportJob extends DataClass implements Insertable<ImportJob> {
     stage,
     progress,
     error,
+    draftId,
+    done,
+    total,
+    stats,
+    entities,
+    entitiesTotal,
+    fidelity,
     createdAt,
     updatedAt,
   );
@@ -4780,6 +5026,13 @@ class ImportJob extends DataClass implements Insertable<ImportJob> {
           other.stage == this.stage &&
           other.progress == this.progress &&
           other.error == this.error &&
+          other.draftId == this.draftId &&
+          other.done == this.done &&
+          other.total == this.total &&
+          other.stats == this.stats &&
+          other.entities == this.entities &&
+          other.entitiesTotal == this.entitiesTotal &&
+          other.fidelity == this.fidelity &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -4791,6 +5044,13 @@ class ImportJobsCompanion extends UpdateCompanion<ImportJob> {
   final Value<String> stage;
   final Value<double> progress;
   final Value<String?> error;
+  final Value<String?> draftId;
+  final Value<int> done;
+  final Value<int> total;
+  final Value<String?> stats;
+  final Value<String?> entities;
+  final Value<int> entitiesTotal;
+  final Value<int> fidelity;
   final Value<int> createdAt;
   final Value<int> updatedAt;
   final Value<int> rowid;
@@ -4801,6 +5061,13 @@ class ImportJobsCompanion extends UpdateCompanion<ImportJob> {
     this.stage = const Value.absent(),
     this.progress = const Value.absent(),
     this.error = const Value.absent(),
+    this.draftId = const Value.absent(),
+    this.done = const Value.absent(),
+    this.total = const Value.absent(),
+    this.stats = const Value.absent(),
+    this.entities = const Value.absent(),
+    this.entitiesTotal = const Value.absent(),
+    this.fidelity = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -4812,6 +5079,13 @@ class ImportJobsCompanion extends UpdateCompanion<ImportJob> {
     required String stage,
     this.progress = const Value.absent(),
     this.error = const Value.absent(),
+    this.draftId = const Value.absent(),
+    this.done = const Value.absent(),
+    this.total = const Value.absent(),
+    this.stats = const Value.absent(),
+    this.entities = const Value.absent(),
+    this.entitiesTotal = const Value.absent(),
+    this.fidelity = const Value.absent(),
     required int createdAt,
     required int updatedAt,
     this.rowid = const Value.absent(),
@@ -4828,6 +5102,13 @@ class ImportJobsCompanion extends UpdateCompanion<ImportJob> {
     Expression<String>? stage,
     Expression<double>? progress,
     Expression<String>? error,
+    Expression<String>? draftId,
+    Expression<int>? done,
+    Expression<int>? total,
+    Expression<String>? stats,
+    Expression<String>? entities,
+    Expression<int>? entitiesTotal,
+    Expression<int>? fidelity,
     Expression<int>? createdAt,
     Expression<int>? updatedAt,
     Expression<int>? rowid,
@@ -4839,6 +5120,13 @@ class ImportJobsCompanion extends UpdateCompanion<ImportJob> {
       if (stage != null) 'stage': stage,
       if (progress != null) 'progress': progress,
       if (error != null) 'error': error,
+      if (draftId != null) 'draft_id': draftId,
+      if (done != null) 'done': done,
+      if (total != null) 'total': total,
+      if (stats != null) 'stats': stats,
+      if (entities != null) 'entities': entities,
+      if (entitiesTotal != null) 'entities_total': entitiesTotal,
+      if (fidelity != null) 'fidelity': fidelity,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -4852,6 +5140,13 @@ class ImportJobsCompanion extends UpdateCompanion<ImportJob> {
     Value<String>? stage,
     Value<double>? progress,
     Value<String?>? error,
+    Value<String?>? draftId,
+    Value<int>? done,
+    Value<int>? total,
+    Value<String?>? stats,
+    Value<String?>? entities,
+    Value<int>? entitiesTotal,
+    Value<int>? fidelity,
     Value<int>? createdAt,
     Value<int>? updatedAt,
     Value<int>? rowid,
@@ -4863,6 +5158,13 @@ class ImportJobsCompanion extends UpdateCompanion<ImportJob> {
       stage: stage ?? this.stage,
       progress: progress ?? this.progress,
       error: error ?? this.error,
+      draftId: draftId ?? this.draftId,
+      done: done ?? this.done,
+      total: total ?? this.total,
+      stats: stats ?? this.stats,
+      entities: entities ?? this.entities,
+      entitiesTotal: entitiesTotal ?? this.entitiesTotal,
+      fidelity: fidelity ?? this.fidelity,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -4890,6 +5192,27 @@ class ImportJobsCompanion extends UpdateCompanion<ImportJob> {
     if (error.present) {
       map['error'] = Variable<String>(error.value);
     }
+    if (draftId.present) {
+      map['draft_id'] = Variable<String>(draftId.value);
+    }
+    if (done.present) {
+      map['done'] = Variable<int>(done.value);
+    }
+    if (total.present) {
+      map['total'] = Variable<int>(total.value);
+    }
+    if (stats.present) {
+      map['stats'] = Variable<String>(stats.value);
+    }
+    if (entities.present) {
+      map['entities'] = Variable<String>(entities.value);
+    }
+    if (entitiesTotal.present) {
+      map['entities_total'] = Variable<int>(entitiesTotal.value);
+    }
+    if (fidelity.present) {
+      map['fidelity'] = Variable<int>(fidelity.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<int>(createdAt.value);
     }
@@ -4911,8 +5234,326 @@ class ImportJobsCompanion extends UpdateCompanion<ImportJob> {
           ..write('stage: $stage, ')
           ..write('progress: $progress, ')
           ..write('error: $error, ')
+          ..write('draftId: $draftId, ')
+          ..write('done: $done, ')
+          ..write('total: $total, ')
+          ..write('stats: $stats, ')
+          ..write('entities: $entities, ')
+          ..write('entitiesTotal: $entitiesTotal, ')
+          ..write('fidelity: $fidelity, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ImportChunksTable extends ImportChunks
+    with TableInfo<$ImportChunksTable, ImportChunk> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ImportChunksTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _jobIdMeta = const VerificationMeta('jobId');
+  @override
+  late final GeneratedColumn<String> jobId = GeneratedColumn<String>(
+    'job_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _idxMeta = const VerificationMeta('idx');
+  @override
+  late final GeneratedColumn<int> idx = GeneratedColumn<int>(
+    'idx',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _payloadMeta = const VerificationMeta(
+    'payload',
+  );
+  @override
+  late final GeneratedColumn<String> payload = GeneratedColumn<String>(
+    'payload',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [jobId, idx, payload, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'import_chunks';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ImportChunk> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('job_id')) {
+      context.handle(
+        _jobIdMeta,
+        jobId.isAcceptableOrUnknown(data['job_id']!, _jobIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_jobIdMeta);
+    }
+    if (data.containsKey('idx')) {
+      context.handle(
+        _idxMeta,
+        idx.isAcceptableOrUnknown(data['idx']!, _idxMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_idxMeta);
+    }
+    if (data.containsKey('payload')) {
+      context.handle(
+        _payloadMeta,
+        payload.isAcceptableOrUnknown(data['payload']!, _payloadMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_payloadMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {jobId, idx};
+  @override
+  ImportChunk map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ImportChunk(
+      jobId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}job_id'],
+      )!,
+      idx: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}idx'],
+      )!,
+      payload: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payload'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ImportChunksTable createAlias(String alias) {
+    return $ImportChunksTable(attachedDatabase, alias);
+  }
+}
+
+class ImportChunk extends DataClass implements Insertable<ImportChunk> {
+  final String jobId;
+  final int idx;
+  final String payload;
+  final int createdAt;
+  const ImportChunk({
+    required this.jobId,
+    required this.idx,
+    required this.payload,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['job_id'] = Variable<String>(jobId);
+    map['idx'] = Variable<int>(idx);
+    map['payload'] = Variable<String>(payload);
+    map['created_at'] = Variable<int>(createdAt);
+    return map;
+  }
+
+  ImportChunksCompanion toCompanion(bool nullToAbsent) {
+    return ImportChunksCompanion(
+      jobId: Value(jobId),
+      idx: Value(idx),
+      payload: Value(payload),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory ImportChunk.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ImportChunk(
+      jobId: serializer.fromJson<String>(json['jobId']),
+      idx: serializer.fromJson<int>(json['idx']),
+      payload: serializer.fromJson<String>(json['payload']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'jobId': serializer.toJson<String>(jobId),
+      'idx': serializer.toJson<int>(idx),
+      'payload': serializer.toJson<String>(payload),
+      'createdAt': serializer.toJson<int>(createdAt),
+    };
+  }
+
+  ImportChunk copyWith({
+    String? jobId,
+    int? idx,
+    String? payload,
+    int? createdAt,
+  }) => ImportChunk(
+    jobId: jobId ?? this.jobId,
+    idx: idx ?? this.idx,
+    payload: payload ?? this.payload,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  ImportChunk copyWithCompanion(ImportChunksCompanion data) {
+    return ImportChunk(
+      jobId: data.jobId.present ? data.jobId.value : this.jobId,
+      idx: data.idx.present ? data.idx.value : this.idx,
+      payload: data.payload.present ? data.payload.value : this.payload,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ImportChunk(')
+          ..write('jobId: $jobId, ')
+          ..write('idx: $idx, ')
+          ..write('payload: $payload, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(jobId, idx, payload, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ImportChunk &&
+          other.jobId == this.jobId &&
+          other.idx == this.idx &&
+          other.payload == this.payload &&
+          other.createdAt == this.createdAt);
+}
+
+class ImportChunksCompanion extends UpdateCompanion<ImportChunk> {
+  final Value<String> jobId;
+  final Value<int> idx;
+  final Value<String> payload;
+  final Value<int> createdAt;
+  final Value<int> rowid;
+  const ImportChunksCompanion({
+    this.jobId = const Value.absent(),
+    this.idx = const Value.absent(),
+    this.payload = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ImportChunksCompanion.insert({
+    required String jobId,
+    required int idx,
+    required String payload,
+    required int createdAt,
+    this.rowid = const Value.absent(),
+  }) : jobId = Value(jobId),
+       idx = Value(idx),
+       payload = Value(payload),
+       createdAt = Value(createdAt);
+  static Insertable<ImportChunk> custom({
+    Expression<String>? jobId,
+    Expression<int>? idx,
+    Expression<String>? payload,
+    Expression<int>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (jobId != null) 'job_id': jobId,
+      if (idx != null) 'idx': idx,
+      if (payload != null) 'payload': payload,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ImportChunksCompanion copyWith({
+    Value<String>? jobId,
+    Value<int>? idx,
+    Value<String>? payload,
+    Value<int>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return ImportChunksCompanion(
+      jobId: jobId ?? this.jobId,
+      idx: idx ?? this.idx,
+      payload: payload ?? this.payload,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (jobId.present) {
+      map['job_id'] = Variable<String>(jobId.value);
+    }
+    if (idx.present) {
+      map['idx'] = Variable<int>(idx.value);
+    }
+    if (payload.present) {
+      map['payload'] = Variable<String>(payload.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ImportChunksCompanion(')
+          ..write('jobId: $jobId, ')
+          ..write('idx: $idx, ')
+          ..write('payload: $payload, ')
+          ..write('createdAt: $createdAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -5480,6 +6121,7 @@ abstract class _$AppDb extends GeneratedDatabase {
   late final $RunEventsTable runEvents = $RunEventsTable(this);
   late final $UsageLogTable usageLog = $UsageLogTable(this);
   late final $ImportJobsTable importJobs = $ImportJobsTable(this);
+  late final $ImportChunksTable importChunks = $ImportChunksTable(this);
   late final $AppSettingsTable appSettings = $AppSettingsTable(this);
   late final $LocalEventsTable localEvents = $LocalEventsTable(this);
   late final Index idxWvWorldVersion = Index(
@@ -5502,6 +6144,10 @@ abstract class _$AppDb extends GeneratedDatabase {
     'idx_events_run_turn',
     'CREATE INDEX idx_events_run_turn ON run_events (run_id, turn_no)',
   );
+  late final Index idxImportChunksJob = Index(
+    'idx_import_chunks_job',
+    'CREATE INDEX idx_import_chunks_job ON import_chunks (job_id, idx)',
+  );
   late final Index idxLocalEventsName = Index(
     'idx_local_events_name',
     'CREATE INDEX idx_local_events_name ON local_events (name, created_at)',
@@ -5519,6 +6165,7 @@ abstract class _$AppDb extends GeneratedDatabase {
     runEvents,
     usageLog,
     importJobs,
+    importChunks,
     appSettings,
     localEvents,
     idxWvWorldVersion,
@@ -5526,6 +6173,7 @@ abstract class _$AppDb extends GeneratedDatabase {
     idxRunsWorld,
     idxSnapshotsRun,
     idxEventsRunTurn,
+    idxImportChunksJob,
     idxLocalEventsName,
   ];
 }
@@ -7642,6 +8290,13 @@ typedef $$ImportJobsTableCreateCompanionBuilder =
       required String stage,
       Value<double> progress,
       Value<String?> error,
+      Value<String?> draftId,
+      Value<int> done,
+      Value<int> total,
+      Value<String?> stats,
+      Value<String?> entities,
+      Value<int> entitiesTotal,
+      Value<int> fidelity,
       required int createdAt,
       required int updatedAt,
       Value<int> rowid,
@@ -7654,6 +8309,13 @@ typedef $$ImportJobsTableUpdateCompanionBuilder =
       Value<String> stage,
       Value<double> progress,
       Value<String?> error,
+      Value<String?> draftId,
+      Value<int> done,
+      Value<int> total,
+      Value<String?> stats,
+      Value<String?> entities,
+      Value<int> entitiesTotal,
+      Value<int> fidelity,
       Value<int> createdAt,
       Value<int> updatedAt,
       Value<int> rowid,
@@ -7695,6 +8357,41 @@ class $$ImportJobsTableFilterComposer
 
   ColumnFilters<String> get error => $composableBuilder(
     column: $table.error,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get draftId => $composableBuilder(
+    column: $table.draftId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get done => $composableBuilder(
+    column: $table.done,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get total => $composableBuilder(
+    column: $table.total,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get stats => $composableBuilder(
+    column: $table.stats,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get entities => $composableBuilder(
+    column: $table.entities,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get entitiesTotal => $composableBuilder(
+    column: $table.entitiesTotal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get fidelity => $composableBuilder(
+    column: $table.fidelity,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7748,6 +8445,41 @@ class $$ImportJobsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get draftId => $composableBuilder(
+    column: $table.draftId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get done => $composableBuilder(
+    column: $table.done,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get total => $composableBuilder(
+    column: $table.total,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get stats => $composableBuilder(
+    column: $table.stats,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get entities => $composableBuilder(
+    column: $table.entities,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get entitiesTotal => $composableBuilder(
+    column: $table.entitiesTotal,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get fidelity => $composableBuilder(
+    column: $table.fidelity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -7790,6 +8522,29 @@ class $$ImportJobsTableAnnotationComposer
   GeneratedColumn<String> get error =>
       $composableBuilder(column: $table.error, builder: (column) => column);
 
+  GeneratedColumn<String> get draftId =>
+      $composableBuilder(column: $table.draftId, builder: (column) => column);
+
+  GeneratedColumn<int> get done =>
+      $composableBuilder(column: $table.done, builder: (column) => column);
+
+  GeneratedColumn<int> get total =>
+      $composableBuilder(column: $table.total, builder: (column) => column);
+
+  GeneratedColumn<String> get stats =>
+      $composableBuilder(column: $table.stats, builder: (column) => column);
+
+  GeneratedColumn<String> get entities =>
+      $composableBuilder(column: $table.entities, builder: (column) => column);
+
+  GeneratedColumn<int> get entitiesTotal => $composableBuilder(
+    column: $table.entitiesTotal,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get fidelity =>
+      $composableBuilder(column: $table.fidelity, builder: (column) => column);
+
   GeneratedColumn<int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -7831,6 +8586,13 @@ class $$ImportJobsTableTableManager
                 Value<String> stage = const Value.absent(),
                 Value<double> progress = const Value.absent(),
                 Value<String?> error = const Value.absent(),
+                Value<String?> draftId = const Value.absent(),
+                Value<int> done = const Value.absent(),
+                Value<int> total = const Value.absent(),
+                Value<String?> stats = const Value.absent(),
+                Value<String?> entities = const Value.absent(),
+                Value<int> entitiesTotal = const Value.absent(),
+                Value<int> fidelity = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
                 Value<int> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -7841,6 +8603,13 @@ class $$ImportJobsTableTableManager
                 stage: stage,
                 progress: progress,
                 error: error,
+                draftId: draftId,
+                done: done,
+                total: total,
+                stats: stats,
+                entities: entities,
+                entitiesTotal: entitiesTotal,
+                fidelity: fidelity,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -7853,6 +8622,13 @@ class $$ImportJobsTableTableManager
                 required String stage,
                 Value<double> progress = const Value.absent(),
                 Value<String?> error = const Value.absent(),
+                Value<String?> draftId = const Value.absent(),
+                Value<int> done = const Value.absent(),
+                Value<int> total = const Value.absent(),
+                Value<String?> stats = const Value.absent(),
+                Value<String?> entities = const Value.absent(),
+                Value<int> entitiesTotal = const Value.absent(),
+                Value<int> fidelity = const Value.absent(),
                 required int createdAt,
                 required int updatedAt,
                 Value<int> rowid = const Value.absent(),
@@ -7863,6 +8639,13 @@ class $$ImportJobsTableTableManager
                 stage: stage,
                 progress: progress,
                 error: error,
+                draftId: draftId,
+                done: done,
+                total: total,
+                stats: stats,
+                entities: entities,
+                entitiesTotal: entitiesTotal,
+                fidelity: fidelity,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -7887,6 +8670,184 @@ typedef $$ImportJobsTableProcessedTableManager =
       $$ImportJobsTableUpdateCompanionBuilder,
       (ImportJob, BaseReferences<_$AppDb, $ImportJobsTable, ImportJob>),
       ImportJob,
+      PrefetchHooks Function()
+    >;
+typedef $$ImportChunksTableCreateCompanionBuilder =
+    ImportChunksCompanion Function({
+      required String jobId,
+      required int idx,
+      required String payload,
+      required int createdAt,
+      Value<int> rowid,
+    });
+typedef $$ImportChunksTableUpdateCompanionBuilder =
+    ImportChunksCompanion Function({
+      Value<String> jobId,
+      Value<int> idx,
+      Value<String> payload,
+      Value<int> createdAt,
+      Value<int> rowid,
+    });
+
+class $$ImportChunksTableFilterComposer
+    extends Composer<_$AppDb, $ImportChunksTable> {
+  $$ImportChunksTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get jobId => $composableBuilder(
+    column: $table.jobId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get idx => $composableBuilder(
+    column: $table.idx,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ImportChunksTableOrderingComposer
+    extends Composer<_$AppDb, $ImportChunksTable> {
+  $$ImportChunksTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get jobId => $composableBuilder(
+    column: $table.jobId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get idx => $composableBuilder(
+    column: $table.idx,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ImportChunksTableAnnotationComposer
+    extends Composer<_$AppDb, $ImportChunksTable> {
+  $$ImportChunksTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get jobId =>
+      $composableBuilder(column: $table.jobId, builder: (column) => column);
+
+  GeneratedColumn<int> get idx =>
+      $composableBuilder(column: $table.idx, builder: (column) => column);
+
+  GeneratedColumn<String> get payload =>
+      $composableBuilder(column: $table.payload, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$ImportChunksTableTableManager
+    extends
+        RootTableManager<
+          _$AppDb,
+          $ImportChunksTable,
+          ImportChunk,
+          $$ImportChunksTableFilterComposer,
+          $$ImportChunksTableOrderingComposer,
+          $$ImportChunksTableAnnotationComposer,
+          $$ImportChunksTableCreateCompanionBuilder,
+          $$ImportChunksTableUpdateCompanionBuilder,
+          (
+            ImportChunk,
+            BaseReferences<_$AppDb, $ImportChunksTable, ImportChunk>,
+          ),
+          ImportChunk,
+          PrefetchHooks Function()
+        > {
+  $$ImportChunksTableTableManager(_$AppDb db, $ImportChunksTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ImportChunksTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ImportChunksTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ImportChunksTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> jobId = const Value.absent(),
+                Value<int> idx = const Value.absent(),
+                Value<String> payload = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ImportChunksCompanion(
+                jobId: jobId,
+                idx: idx,
+                payload: payload,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String jobId,
+                required int idx,
+                required String payload,
+                required int createdAt,
+                Value<int> rowid = const Value.absent(),
+              }) => ImportChunksCompanion.insert(
+                jobId: jobId,
+                idx: idx,
+                payload: payload,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ImportChunksTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDb,
+      $ImportChunksTable,
+      ImportChunk,
+      $$ImportChunksTableFilterComposer,
+      $$ImportChunksTableOrderingComposer,
+      $$ImportChunksTableAnnotationComposer,
+      $$ImportChunksTableCreateCompanionBuilder,
+      $$ImportChunksTableUpdateCompanionBuilder,
+      (ImportChunk, BaseReferences<_$AppDb, $ImportChunksTable, ImportChunk>),
+      ImportChunk,
       PrefetchHooks Function()
     >;
 typedef $$AppSettingsTableCreateCompanionBuilder =
@@ -8229,6 +9190,8 @@ class $AppDbManager {
       $$UsageLogTableTableManager(_db, _db.usageLog);
   $$ImportJobsTableTableManager get importJobs =>
       $$ImportJobsTableTableManager(_db, _db.importJobs);
+  $$ImportChunksTableTableManager get importChunks =>
+      $$ImportChunksTableTableManager(_db, _db.importChunks);
   $$AppSettingsTableTableManager get appSettings =>
       $$AppSettingsTableTableManager(_db, _db.appSettings);
   $$LocalEventsTableTableManager get localEvents =>

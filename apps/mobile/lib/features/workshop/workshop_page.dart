@@ -57,11 +57,10 @@ class WorkshopPage extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
             _EntryCard(
-              icon: auto_import_outlined_placeholder,
+              icon: Icons.upload_file_outlined,
               title: '导入小说 TXT',
-              desc: '把一本小说变成世界（M2 即将开放）',
-              enabled: false,
-              onTap: () {},
+              desc: '把一本小说变成世界：抽取实体、生成圣经、审阅后开玩',
+              onTap: () => context.push('/workshop/import'),
             ),
             const SizedBox(height: 22),
             if (list.isEmpty)
@@ -90,33 +89,28 @@ class WorkshopPage extends ConsumerWidget {
   }
 }
 
-// 占位图标常量：M2 才启用导入入口
-const IconData auto_import_outlined_placeholder = Icons.upload_file_outlined;
-
 class _EntryCard extends StatelessWidget {
   const _EntryCard({
     required this.icon,
     required this.title,
     required this.desc,
     required this.onTap,
-    this.enabled = true,
   });
 
   final IconData icon;
   final String title;
   final String desc;
   final VoidCallback onTap;
-  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final sub = theme.colorScheme.secondary;
     return PaperCard(
-      onTap: enabled ? onTap : null,
+      onTap: onTap,
       child: Row(
         children: <Widget>[
-          Icon(icon, size: 28, color: enabled ? sub : sub.withValues(alpha: 0.4)),
+          Icon(icon, size: 28, color: sub),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -124,22 +118,17 @@ class _EntryCard extends StatelessWidget {
               children: <Widget>[
                 Text(
                   title,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: enabled ? null : sub,
                   ),
                 ),
                 const SizedBox(height: 3),
                 Text(desc,
-                    style: TextStyle(
-                        fontSize: 12,
-                        color: enabled ? sub : sub.withValues(alpha: 0.5))),
+                    style: TextStyle(fontSize: 12, color: sub)),
               ],
             ),
           ),
-          if (enabled)
-            const Icon(Icons.chevron_right, size: 20, color: Colors.transparent),
         ],
       ),
     );

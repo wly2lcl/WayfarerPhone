@@ -14,4 +14,6 @@ export 'src/turn/queue.dart';
 export 'src/turn/turn_engine.dart';
 export 'src/world_draft/checks.dart';
 export 'src/world_draft/draft_models.dart';
+export 'src/world_draft/import_models.dart';
+export 'src/world_draft/import_service.dart';
 export 'src/world_draft/world_draft_service.dart';

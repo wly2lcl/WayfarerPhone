@@ -130,11 +130,32 @@ class ImportJobs extends Table {
   TextColumn get stage => text()();
   RealColumn get progress => real().clientDefault(() => 0)();
   TextColumn get error => text().nullable()();
+  // v4：断点续跑与统计（世界创造与导入 §4.5）
+  TextColumn get draftId => text().nullable()();
+  IntColumn get done => integer().clientDefault(() => 0)();
+  IntColumn get total => integer().clientDefault(() => 0)();
+  TextColumn get stats => text().nullable()(); // ImportStats JSON
+  TextColumn get entities => text().nullable()(); // 归并后实体（审阅用）
+  IntColumn get entitiesTotal => integer().clientDefault(() => 0)();
+  // v5：合成档位（0=快速 1=标准 2=忠实，ImportFidelity.index）
+  IntColumn get fidelity => integer().clientDefault(() => 0)();
   IntColumn get createdAt => integer()();
   IntColumn get updatedAt => integer()();
 
   @override
   Set<Column> get primaryKey => {id};
+}
+
+/// 每块抽取结果（断点真源：done 由本表行数推导，续跑不重抽取过的块）
+@TableIndex(name: 'idx_import_chunks_job', columns: {#jobId, #idx})
+class ImportChunks extends Table {
+  TextColumn get jobId => text()();
+  IntColumn get idx => integer()();
+  TextColumn get payload => text()(); // ChunkExtraction JSON
+  IntColumn get createdAt => integer()();
+
+  @override
+  Set<Column> get primaryKey => {jobId, idx};
 }
 
 class AppSettings extends Table {
@@ -163,6 +184,7 @@ class LocalEvents extends Table {
   RunEvents,
   UsageLog,
   ImportJobs,
+  ImportChunks,
   AppSettings,
   LocalEvents,
 ])
@@ -170,7 +192,7 @@ class AppDb extends _$AppDb {
   AppDb(super.e);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -191,6 +213,27 @@ class AppDb extends _$AppDb {
                 'ALTER TABLE runs ADD COLUMN is_trial INTEGER NOT NULL DEFAULT 0');
             await customStatement(
                 'ALTER TABLE runs ADD COLUMN draft_id TEXT NULL');
+          }
+          if (from < 4) {
+            // v4：import_jobs 续跑/统计列 + 每块抽取结果表（M2）
+            await customStatement(
+                'ALTER TABLE import_jobs ADD COLUMN draft_id TEXT NULL');
+            await customStatement(
+                'ALTER TABLE import_jobs ADD COLUMN done INTEGER NOT NULL DEFAULT 0');
+            await customStatement(
+                'ALTER TABLE import_jobs ADD COLUMN total INTEGER NOT NULL DEFAULT 0');
+            await customStatement(
+                'ALTER TABLE import_jobs ADD COLUMN stats TEXT NULL');
+            await customStatement(
+                'ALTER TABLE import_jobs ADD COLUMN entities TEXT NULL');
+            await customStatement(
+                'ALTER TABLE import_jobs ADD COLUMN entities_total INTEGER NOT NULL DEFAULT 0');
+            await m.createTable(importChunks);
+          }
+          if (from < 5) {
+            // v5：导入合成档位（快速/标准/忠实）
+            await customStatement(
+                'ALTER TABLE import_jobs ADD COLUMN fidelity INTEGER NOT NULL DEFAULT 0');
           }
         },
         beforeOpen: (details) async {

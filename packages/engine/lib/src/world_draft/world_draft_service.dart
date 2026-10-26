@@ -80,7 +80,7 @@ class WorldDraftService {
 
   // ---- 创建 / 查询 ----
 
-  Future<DraftView> create(DraftSource source) async {
+  Future<DraftView> create(DraftSource source, {String? importJobId}) async {
     final now = DateTime.now().millisecondsSinceEpoch;
     final id = 'd_${now.toRadixString(36)}_${random.nextInt(0xFFF).toRadixString(36)}';
     await db.into(db.worldDrafts).insert(WorldDraftsCompanion.insert(
@@ -89,6 +89,9 @@ class WorldDraftService {
           status: DraftStatus.draft.name,
           interview: Value(jsonEncode(
               InterviewState(step: FieldKey.era).toJson())),
+          importJobId: importJobId == null
+              ? const Value.absent()
+              : Value(importJobId),
           exportable: Value(source != DraftSource.import),
           createdAt: now,
           updatedAt: now,
@@ -282,6 +285,21 @@ class WorldDraftService {
       throw EngineException(EngineCode.draftIncomplete,
           '完整度 ${interview.completeness}%（需 ≥$kCompletenessGate%），先补足访谈');
     }
+    return _compose(draftId, dp.buildBibleCoreUser(interview));
+  }
+
+  /// M2：导入管线用抽取素材合成圣经（无访谈、不做完整度门禁，仅 draft 可进入）
+  Future<DraftView> generateFromMaterial(
+      String draftId, String materialUser) async {
+    final row = await _row(draftId);
+    if (row == null) throw EngineException(EngineCode.notFound, '草稿不存在');
+    if (row.status != DraftStatus.draft.name) {
+      throw EngineException(EngineCode.stateInvalid, '当前状态不可生成');
+    }
+    return _compose(draftId, materialUser);
+  }
+
+  Future<DraftView> _compose(String draftId, String coreUser) async {
     await _patch(draftId, WorldDraftsCompanion(
       status: Value(DraftStatus.generating.name),
       updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
@@ -289,7 +307,7 @@ class WorldDraftService {
     try {
       final core = await _callJson(
         system: dp.buildBibleCoreSystem(),
-        user: dp.buildBibleCoreUser(interview),
+        user: coreUser,
         role: GatewayRole.composer,
         maxTokens: 4000,
         temperature: 0.7,
@@ -298,7 +316,7 @@ class WorldDraftService {
       if (bible == null) {
         final retry = await _callJson(
           system: dp.buildBibleCoreSystem(),
-          user: dp.buildBibleCoreUser(interview),
+          user: coreUser,
           role: GatewayRole.composer,
           maxTokens: 4000,
           temperature: 0.7,

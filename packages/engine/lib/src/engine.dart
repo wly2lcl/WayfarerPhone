@@ -15,6 +15,7 @@ import 'turn/context.dart';
 import 'turn/queue.dart';
 import 'turn/turn_engine.dart';
 import 'world_draft/draft_package.dart';
+import 'world_draft/import_service.dart';
 import 'world_draft/world_draft_service.dart';
 
 /// 内置世界种子数据（App 从 assets 读入后传入）
@@ -135,6 +136,7 @@ class Engine {
   final KeyStore keyStore;
   late final TurnEngine turns;
   late final WorldDraftService drafts;
+  late final ImportService imports;
   final SerialQueue _queue = SerialQueue();
   final Map<String, (List<Identity>, int)> _drawTokens = {};
   final Random random;
@@ -149,6 +151,12 @@ class Engine {
       gateway: gateway,
       initialState: initialStateFor,
       prologue: prologueFor,
+      random: this.random,
+    );
+    imports = ImportService(
+      db: db,
+      gateway: gateway,
+      drafts: drafts,
       random: this.random,
     );
   }

@@ -10,7 +10,9 @@ environment:
 dependencies:
   contracts:
     path: ../contracts
+  crypto: ^3.0.0
   drift: ^2.28.0
+  fast_gbk: ^1.0.0
   sqlite3: ^2.7.0
 
 dev_dependencies:

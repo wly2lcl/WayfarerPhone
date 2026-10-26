@@ -117,6 +117,13 @@ String buildBibleCoreSystem() => '''
 5. 除 id（era_/reg_/place_/fac_）外，所有输出（名称、摘要、提示、代价、禁忌）一律用简体中文汉字；人名、地名、势力名不得使用拼音或英文单词。
 6. 只输出一个 JSON 对象。''';
 
+/// 圣经骨架 schema（访谈与导入管线共用，M2 import_prompts.dart 引用）
+const String kBibleCoreSchema =
+    '{"meta":{"title":"世界名（2-4 字）","genre":"xianxia","tone":"基调词顿号相连","pov":"second","language":"zh-CN","contentRating":"general","summary":"两句话世界梗概，第二人称视角的钩子","volumeHint":"第一卷一句主线提示，60 字内"},"eras":[{"id":"era_x","name":"时代名","span":"跨度","summary":"60 字内","turningPoints":["转折"]}],"regions":[{"id":"reg_x","name":"区名","terrain":"plain|mountain|forest|water|desert|city","climate":"气候一句","summary":"60 字内","danger":2,"factionIds":["fac_x"],"places":[{"id":"place_x","name":"地名","kind":"city|town|sect|wild|ruin|secret","summary":"40 字内","tags":["标签"]}]}],"factions":[{"id":"fac_x","name":"势力名","kind":"sect|clan|court|guild|cult","summary":"40 字内","goal":"在争什么","resources":["掌控的资源"],"stanceTo":[{"factionId":"fac_y","stance":"敌对|提防|结盟|依附"}]}],"powerSystem":{"name":"体系名","resource":"修炼资源","tiers":[{"name":"境界名","stage":1,"maxLayer":3,"lifespan":120,"requires":"突破条件一句","breakthroughRisk":30,"attrBonus":2}],"rules":["硬规则"],"costs":["代价"]},"taboos":["禁忌"]}';
+
+const String kBibleCoreCounts =
+    '数量硬性要求：eras 2 个；regions ≥3 个（每个至少 2 个 places，danger 1-5）；factions ≥3 个（每个至少一条 stanceTo，region.factionIds 覆盖所有势力）；powerSystem.tiers ≥3 层且 costs ≥1 条；taboos ≥3 条。';
+
 String buildBibleCoreUser(InterviewState interview) {
   final answers = <String, Object?>{};
   for (final k in FieldKey.values) {
@@ -133,9 +140,9 @@ String buildBibleCoreUser(InterviewState interview) {
 ${jsonEncode(answers)}
 
 只输出一个 JSON 对象，schema：
-{"meta":{"title":"世界名（2-4 字）","genre":"xianxia","tone":"基调词顿号相连","pov":"second","language":"zh-CN","contentRating":"general","summary":"两句话世界梗概，第二人称视角的钩子","volumeHint":"第一卷一句主线提示，60 字内"},"eras":[{"id":"era_x","name":"时代名","span":"跨度","summary":"60 字内","turningPoints":["转折"]}],"regions":[{"id":"reg_x","name":"区名","terrain":"plain|mountain|forest|water|desert|city","climate":"气候一句","summary":"60 字内","danger":2,"factionIds":["fac_x"],"places":[{"id":"place_x","name":"地名","kind":"city|town|sect|wild|ruin|secret","summary":"40 字内","tags":["标签"]}]}],"factions":[{"id":"fac_x","name":"势力名","kind":"sect|clan|court|guild|cult","summary":"40 字内","goal":"在争什么","resources":["掌控的资源"],"stanceTo":[{"factionId":"fac_y","stance":"敌对|提防|结盟|依附"}]}],"powerSystem":{"name":"体系名","resource":"修炼资源","tiers":[{"name":"境界名","stage":1,"maxLayer":3,"lifespan":120,"requires":"突破条件一句","breakthroughRisk":30,"attrBonus":2}],"rules":["硬规则"],"costs":["代价"]},"taboos":["禁忌"]}
+$kBibleCoreSchema
 
-数量硬性要求：eras 2 个；regions ≥3 个（每个至少 2 个 places，danger 1-5）；factions ≥3 个（每个至少一条 stanceTo，region.factionIds 覆盖所有势力）；powerSystem.tiers ≥3 层且 costs ≥1 条；taboos ≥3 条。''';
+$kBibleCoreCounts''';
 }
 
 /// 圣经内容生成（npcPool/eventSeeds/endgame）

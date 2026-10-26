@@ -291,6 +291,41 @@ type ScenePlan = {
 
 **失败处理**：每段重试 1 次；仍失败则整次生成失败，草稿状态回滚，UI 给出可重试的错误。**模型输出容错按 §6 执行**——内容段偶发把对象写成字符串/数组时降级为空值，不炸整个解析（M1 真机实测根因）。
 
+M2 导入复用：素材摘要 → 圣经骨架一次调用改走 `buildImportCoreUser`（engine `world_draft/import_prompts.dart`）——输入不再是访谈回答，而是归并后的实体 / 关系边 / 时间线 / 分块摘要 digest；铁律改为「忠于素材」（素材里的名字、关系保留原样，素材没有的部分由模型克制补全），其余 id / 中文纯化约束与 Composer 一致；身份池与内容段沿用 M1 提示词原文。
+
+### 4.9 导入分块抽取 ImportExtractor（M2 小说导入）
+
+**职责**：把一本 TXT 按 3000 字（重叠 400）分块后，逐块抽取实体、关系、时间线与 80 字内剧情摘要。小模型（extractor 角色），每块独立调用，最多 2 路并发；模板在 engine `world_draft/import_prompts.dart`（`buildChunkSystem` / `buildChunkUser`）。
+
+**输入**：单块正文 + 块序号 + 所属章节序号。
+
+**约束（系统段铁律）**：
+
+1. 只依据正文，不脑补；名字原样保留（含称号），不翻译不改写
+2. `type` 只能是 character | place | faction | item | event，拿不准归 character
+3. `frequency` = 该名称在本块正文中的出现次数；`attributes` 只挑 1–3 个最有信息量的键
+4. 关系 `kind` 用两三字关系词（敌对/从属/师徒/同盟/血亲/知情/买卖）
+5. `timeline` 只记重大事件，每块最多 2 条；`summary` 80 字内客观陈述
+6. 除 `kind` 值外一律简体中文汉字；只输出一个 JSON 对象
+
+**失败处理**：单块解析失败（无 JSON / schema 空）按退避重试至多 3 次（间隔注入式，默认 5s×attempt）；终失败则整个任务 `failed`，已完成块保留在 `import_chunks`（续跑时跳过）。解析容错走 §6（`asListOfMaps` 降级）；`entities` 与 `summary` 双空的块视为无效输出计入重试。
+
+### 4.10 导入脉络压缩 ImportArcCompressor（M2 忠实档）
+
+**职责**：忠实档合成圣经前，把全书分块摘要（>16 条时）压缩成 ≤16 条卷级剧情脉络，替代分块摘要进入合成素材——保证结局与后期剧情参与生成，不被顺序截断丢掉。小模型（extractor 角色），单次调用，模板在 engine `world_draft/import_prompts.dart`（`buildImportArcSystem` / `buildImportArcUser` / `parseImportArcs`）。
+
+**输入**：全书分块摘要编号列表（不截断，全量输入）。
+
+**输出**：`{"arcs": ["卷级剧情摘要", ...]}`，每条 ≤120 字。
+
+**约束（系统段铁律）**：
+
+1. 脉络必须覆盖到全书结尾，最终一条必须反映真实结局，不得另编结局
+2. 主线人物的命运、势力格局的最终变化必须保留
+3. 每条 ≤120 字，简体中文，只输出一个 JSON 对象
+
+**失败处理**：解析失败按退避重试至多 3 次；`contentBlocked` 或终失败返回 null 并**降级为标准档采样**（不失败任务、不再标注全书脉络规则）；解析容错走 §6。压缩只在 `summaries.length > 16` 时触发（≤16 条时全量摘要本就进得去，直接合成）。
+
 ---
 
 ## 5. 全局铁律（写入每个角色的系统段）
@@ -477,9 +512,10 @@ facts 必须是正文中真实发生过的事；choices 只能润色既有意图
 
 - 槽位为空时整句删除，不输出「无」「null」字样
 - 模板中的 JSON schema 由 `packages/contracts` 生成，不在模板里手写两份
-- 每份模板改动后必须跑 §8 全部 8 条黄金回合；M1 访谈/构建模板改动还需跑 `dart test test/world_draft_test.dart`
+- 每份模板改动后必须跑 §8 全部 8 条黄金回合；M1 访谈/构建模板改动还需跑 `dart test test/world_draft_test.dart`；M2 导入模板改动还需跑 `dart test test/import_service_test.dart`
 - 模板文本纳入版本管理；每回合写一条 `type = system` 的 `run_events`，其 payload 记录 `{ roles: [...], promptVersion }`，便于回溯
 - Composer 各段（骨架/内容/身份）与代填模板均含中文纯化约束行：除 id 外所有文案一律简体中文汉字，禁止拼音/英文名称
+- 导入抽取（ImportExtractor）与 Composer 骨架段同含中文纯化约束；导入的圣经骨架调用（`buildImportCoreUser`）额外约束「忠于素材，不得替换/发明主名」
 
 ---
 
@@ -490,3 +526,5 @@ facts 必须是正文中真实发生过的事；choices 只能润色既有意图
 | 2026-10-23 | v0.2：校正为单机离线口径 |
 | 2026-10-24 | v0.3：新增 M1 两角色——访谈员 Interviewer（小模型，抽取/代填/矛盾检出）与构建者 Composer（中模型，骨架→内容段→身份池三段生成）；§6 增加对象字段畸形容错条目 |
 | 2026-10-24 | v0.4：中文纯化约束——§4.7 访谈约束加「名称保留中文汉字」，§4.8 Composer 约束加中文纯化条目，§9.7 装配约定记录各模板约束行（真机根因：小模型生成拼音名/夹英文，修复后真机验证全中文世界） |
+| 2026-10-25 | v0.5：M2 导入提示词——新增 §4.9 导入分块抽取 ImportExtractor（3000 字分块逐块抽实体/关系/时间线/摘要，3 次退避重试，块级落库可续跑）；§4.8 补 Composer 在 M2 的复用形态（`buildImportCoreUser`：素材 digest → 圣经骨架，忠于素材铁律）；§9.7 补导入模板的测试与中文纯化约定 |
+| 2026-10-26 | v0.6：合成档位——新增 §4.10 导入脉络压缩 ImportArcCompressor（忠实档：全书分块摘要 → ≤16 条卷级脉络，结局必须真实，3 次重试失败降级标准档）；§4.8 `buildImportCoreUser` 素材改由服务端按档位预截（fast 顺序截断 / standard 全书均匀采样 / faithful 卷级脉络），给出全书脉络时追加「终局必须与脉络一致」规则 |
