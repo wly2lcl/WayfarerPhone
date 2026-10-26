@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:contracts/contracts.dart';
+import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:engine/engine.dart';
 import 'package:fast_gbk/fast_gbk.dart';
 import 'package:test/test.dart';
@@ -159,11 +160,12 @@ void main() {
     });
 
     test('分块 3000 / 重叠 400，章节序号随章节头推进', () {
-      // 3 章、每章 2500 字 → 总 7510 字 → 3 块
+      // 3 章、每章标题独立成行 + 2500 字正文 → 总 7524 字 → 3 块
       final buf = StringBuffer();
       for (var c = 1; c <= 3; c++) {
         buf.write('第${["一", "二", "三"][c - 1]}章 试炼\n');
         buf.write(List.filled(2500, '云').join());
+        buf.write('\n');
       }
       final r = decodeAndChunk(utf8.encode(buf.toString()));
       expect(r.chapters, 3);
@@ -173,6 +175,16 @@ void main() {
       expect(r.chunks[1].chapter, 2);
       expect(r.chunks[2].chapter, 3);
       expect(r.chunks[1].text.length, 3000);
+    });
+
+    test('正文行中提及「第N章」不计入章节，行首标题（含缩进）计入', () {
+      final text = '第一章 出门\n'
+          // 行中提及（如转述、回忆）不得计为新章
+          '他想起书上第3章写过的口诀，又默诵了一遍。\n'
+          '　　第二章 归途\n' // 全角空格缩进的标题也要识别
+          '雪停了，他踏上了归途。';
+      final r = decodeAndChunk(utf8.encode(text));
+      expect(r.chapters, 2);
     });
   });
 
@@ -329,6 +341,87 @@ void main() {
       expect(again.id, job.id);
     });
 
+    test('删除导入草稿级联清理导入作业；同文件重导新建任务而非命中死链', () async {
+      final bible = loadBible();
+      final npc1 = bible.npcPool[0].name;
+      final npc2 = bible.npcPool[1].name;
+      final file = File('${tmp.path}/novel_del.txt');
+      await file.writeAsString(_twoChunkNovel());
+
+      Future<void> expectPipeline() async {
+        fake.expect(GatewayRole.extractor, _chunkJson(entities: [
+          {
+            'key': npc1,
+            'type': 'character',
+            'firstSeen': {'chapter': 1, 'offset': 10},
+            'frequency': 3,
+            'attributes': {'身份': '散修'},
+          },
+          {
+            'key': '云岫城',
+            'type': 'place',
+            'frequency': 2,
+          },
+        ]));
+        fake.expect(GatewayRole.extractor, _chunkJson(entities: [
+          {'key': npc2, 'type': 'character', 'frequency': 2},
+        ], relations: [
+          {'from': npc1, 'to': npc2, 'kind': '同盟', 'chapter': 1},
+        ], timeline: [
+          {'chapter': 1, 'title': '雪夜入门', 'summary': '主角入山门'},
+        ]));
+        fake.expect(GatewayRole.composer, jsonEncode(_cangwuCore()));
+        fake.expect(GatewayRole.composer, jsonEncode(_cangwuContent()));
+        fake.expect(
+            GatewayRole.composer,
+            jsonEncode(
+                {'identities': _cangwuIdentities().map((i) => i.toJson()).toList()}));
+      }
+
+      await expectPipeline();
+      final job = await service.start(file.path);
+      final done = await _awaitFinished(service, job.id);
+      expect(done.stage, 'review', reason: done.error);
+
+      await drafts.delete(done.draftId!);
+      expect(await drafts.get(done.draftId!), isNull);
+      expect(
+          await (db.select(db.importJobs)..where((j) => j.id.equals(job.id)))
+              .getSingleOrNull(),
+          isNull);
+      expect(
+          await (db.select(db.importChunks)
+                ..where((c) => c.jobId.equals(job.id)))
+              .get(),
+          isEmpty);
+
+      // 同文件重导：不再命中残留任务，而是新建任务跑完全程
+      await expectPipeline();
+      final again = await service.start(file.path);
+      expect(again.id, isNot(job.id));
+      final done2 = await _awaitFinished(service, again.id);
+      expect(done2.stage, 'review', reason: done2.error);
+    });
+
+    test('导入进行中的草稿不可删除', () async {
+      final draft = await drafts.create(DraftSource.import);
+      final now = DateTime.now().millisecondsSinceEpoch;
+      await db.into(db.importJobs).insert(ImportJobsCompanion.insert(
+            id: 'ij_test_midflight',
+            sourcePath: '/tmp/novel.txt',
+            contentHash: 'hash_midflight',
+            stage: 'extracting',
+            draftId: Value(draft.id),
+            createdAt: now,
+            updatedAt: now,
+          ));
+      await expectLater(
+          drafts.delete(draft.id),
+          throwsA(isA<EngineException>()
+              .having((e) => e.code, 'code', EngineCode.stateInvalid)));
+      expect(await drafts.get(draft.id), isNotNull);
+    });
+
     test('实体审阅：合并/删除/采纳率；review 状态不可再生成', () async {
       final file = File('${tmp.path}/novel3.txt');
       await file.writeAsString(_twoChunkNovel());
@@ -465,6 +558,61 @@ void main() {
       // 覆盖率门槛按 §4.4 只锁试玩；冻结闸门仍是六条一致性检查
       final fr = await drafts.freeze(fin.draftId!);
       expect(fr.version, 1);
+    });
+
+    test('编辑器保存不抹掉覆盖率门禁；补进 NPC 池后解除', () async {
+      final file = File('${tmp.path}/novel5.txt');
+      await file.writeAsString(_twoChunkNovel());
+      fake.expect(GatewayRole.extractor, _chunkJson(entities: [
+        {'key': '王铁匠', 'type': 'character', 'frequency': 9},
+      ]));
+      fake.expect(GatewayRole.extractor, _chunkJson(entities: [
+        {'key': '李捕头', 'type': 'character', 'frequency': 8},
+      ]));
+      fake.expect(GatewayRole.composer, jsonEncode(_cangwuCore()));
+      fake.expect(GatewayRole.composer, jsonEncode(_cangwuContent()));
+      fake.expect(
+          GatewayRole.composer,
+          jsonEncode(
+              {'identities': _cangwuIdentities().map((i) => i.toJson()).toList()}));
+
+      final job = await service.start(file.path);
+      final fin = await _awaitFinished(service, job.id);
+      final bible = (await drafts.detail(fin.draftId!)).bible!;
+
+      // 回归：只改标题的编辑器保存不得抹掉 IMPORT_COVERAGE_LOW
+      final retitled = WorldBible.fromJson(bible.toJson())
+        ..meta.title = '改名世界';
+      await drafts.save(fin.draftId!, bible: retitled);
+      final afterEdit = (await drafts.get(fin.draftId!))!;
+      expect(
+          afterEdit.issues.any((i) => i.code == 'IMPORT_COVERAGE_LOW'), isTrue);
+      await expectLater(
+        drafts.trial(fin.draftId!),
+        throwsA(isA<EngineException>()
+            .having((e) => e.code, 'code', EngineCode.qualityGateFailed)),
+      );
+
+      // 修复路径：把高频人物补进 NPC 池 → 重算通过、试玩放行
+      final patched = WorldBible.fromJson(bible.toJson());
+      NpcSeed manual(String id, String name, String role) => NpcSeed(
+            id: id,
+            name: name,
+            role: role,
+            public:
+                NpcPublic(appearance: '', manner: '', affiliation: '散人'),
+            private: NpcPrivate(
+                secret: '', motive: '', fear: '', leverage: const []),
+          );
+      patched.npcPool
+        ..add(manual('npc_manual_1', '王铁匠', '镇上铁匠'))
+        ..add(manual('npc_manual_2', '李捕头', '县衙捕头'));
+      await drafts.save(fin.draftId!, bible: patched);
+      final afterFix = (await drafts.get(fin.draftId!))!;
+      expect(
+          afterFix.issues.any((i) => i.code == 'IMPORT_COVERAGE_LOW'), isFalse);
+      final trial = await drafts.trial(fin.draftId!);
+      expect(trial.runId, isNotEmpty);
     });
 
     test('原文件被改后 resume 抛 IMPORT_INVALID', () async {

@@ -172,94 +172,64 @@ class _EditorPageState extends ConsumerState<EditorPage> {
 
   Future<void> _editText(String title, String initial,
       void Function(String) apply, {int maxLines = 1}) async {
-    final controller = TextEditingController(text: initial);
     final result = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLines: maxLines,
-          decoration: paperInputDecoration(context, '输入$title'),
-        ),
-        actions: <Widget>[
-          TextButton(onPressed: () => context.pop(), child: const Text('取消')),
-          FilledButton(
-            onPressed: () => context.pop(controller.text.trim()),
-            child: const Text('确定'),
-          ),
-        ],
-      ),
+      builder: (context) => _TextFieldDialog(
+          title: title, initial: initial, maxLines: maxLines),
     );
-    controller.dispose();
     if (result == null || result.isEmpty || result == initial) return;
     await _mutateBible((b) => apply(result));
   }
 
   Future<void> _editList(
       String title, List<String> items, void Function(List<String>) apply) async {
-    final controllers = [
-      for (final s in items) TextEditingController(text: s),
-    ];
     final result = await showDialog<List<String>>(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text(title),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView(
-              shrinkWrap: true,
-              children: <Widget>[
-                for (var i = 0; i < controllers.length; i++)
-                  Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: TextField(
-                          controller: controllers[i],
-                          decoration:
-                              paperInputDecoration(context, '第 ${i + 1} 项'),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.remove_circle_outline),
-                        tooltip: '删除该项',
-                        onPressed: () => setDialogState(() {
-                          controllers[i].dispose();
-                          controllers.removeAt(i);
-                        }),
-                      ),
-                    ],
-                  ),
-                TextButton.icon(
-                  onPressed: () =>
-                      setDialogState(() => controllers.add(TextEditingController())),
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('添加一项'),
-                ),
-              ],
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(onPressed: () => context.pop(), child: const Text('取消')),
-            FilledButton(
-              onPressed: () => context.pop(
-                  controllers.map((c) => c.text.trim()).where((s) => s.isNotEmpty).toList()),
-              child: const Text('确定'),
-            ),
-          ],
-        ),
-      ),
+      builder: (context) => _ListDialog(title: title, items: items),
     );
-    for (final c in controllers) {
-      c.dispose();
-    }
     if (result == null) return;
     final same = result.length == items.length &&
         List.generate(result.length, (i) => result[i] == items[i]).every((e) => e);
     if (same) return;
     await _mutateBible((b) => apply(result));
+  }
+
+  /// 补进高频人物（IMPORT_COVERAGE_LOW 修复路径）：新增 NPC 进池，
+  /// 归属填既有势力名则挂 factionId，否则按散人处理
+  Future<void> _addNpc(WorldBible b) async {
+    final result = await showDialog<(String, String, String)>(
+      context: context,
+      builder: (context) => const _NpcDialog(),
+    );
+    if (result == null || result.$1.isEmpty) return;
+    String? factionId;
+    for (final f in b.factions) {
+      if (f.name == result.$2) {
+        factionId = f.id;
+        break;
+      }
+    }
+    await _mutateBible((bible) {
+      final existing = bible.npcPool.map((n) => n.id).toSet();
+      var i = 1;
+      var id = 'npc_manual_$i';
+      while (existing.contains(id)) {
+        i++;
+        id = 'npc_manual_$i';
+      }
+      bible.npcPool.add(NpcSeed(
+        id: id,
+        name: result.$1,
+        role: result.$3,
+        factionId: factionId,
+        public: NpcPublic(
+            appearance: '',
+            manner: '',
+            affiliation: result.$2.isEmpty ? '散人' : result.$2),
+        private: NpcPrivate(
+            secret: '', motive: '', fear: '', leverage: const []),
+      ));
+    });
   }
 
   @override
@@ -485,7 +455,12 @@ class _Body extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           _SectionCard(
-            title: 'NPC 池（只读，${b.npcPool.length}）',
+            title: 'NPC 池（${b.npcPool.length}）',
+            action: TextButton.icon(
+              onPressed: state._busy ? null : () => state._addNpc(b),
+              icon: const Icon(Icons.person_add_alt_1, size: 16),
+              label: const Text('添加'),
+            ),
             children: <Widget>[
               for (final n in b.npcPool)
                 _ReadRow(
@@ -652,10 +627,11 @@ class _QualityCard extends StatelessWidget {
 }
 
 class _SectionCard extends StatelessWidget {
-  const _SectionCard({required this.title, required this.children});
+  const _SectionCard({required this.title, required this.children, this.action});
 
   final String title;
   final List<Widget> children;
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
@@ -663,9 +639,16 @@ class _SectionCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text(title,
-              style:
-                  const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: Text(title,
+                    style: const TextStyle(
+                        fontSize: 14, fontWeight: FontWeight.w600)),
+              ),
+              if (action != null) action!,
+            ],
+          ),
           const SizedBox(height: 6),
           ...children,
         ],
@@ -765,4 +748,174 @@ Future<bool> _confirm(BuildContext context, String title, String body) async {
     ),
   );
   return ok ?? false;
+}
+
+/// 弹窗自持 controller：退场动画期间 TextField 仍挂载，
+/// 由 State.dispose 释放才安全（在 await showDialog 返回后立即 dispose 会触发
+/// framework '_dependents.isEmpty' 断言红屏）
+class _TextFieldDialog extends StatefulWidget {
+  const _TextFieldDialog(
+      {required this.title, required this.initial, this.maxLines = 1});
+
+  final String title;
+  final String initial;
+  final int maxLines;
+
+  @override
+  State<_TextFieldDialog> createState() => _TextFieldDialogState();
+}
+
+class _TextFieldDialogState extends State<_TextFieldDialog> {
+  late final TextEditingController _controller =
+      TextEditingController(text: widget.initial);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        title: Text(widget.title),
+        content: TextField(
+          controller: _controller,
+          autofocus: true,
+          maxLines: widget.maxLines,
+          decoration: paperInputDecoration(context, '输入${widget.title}'),
+        ),
+        actions: <Widget>[
+          TextButton(onPressed: () => context.pop(), child: const Text('取消')),
+          FilledButton(
+            onPressed: () => context.pop(_controller.text.trim()),
+            child: const Text('确定'),
+          ),
+        ],
+      );
+}
+
+class _ListDialog extends StatefulWidget {
+  const _ListDialog({required this.title, required this.items});
+
+  final String title;
+  final List<String> items;
+
+  @override
+  State<_ListDialog> createState() => _ListDialogState();
+}
+
+class _ListDialogState extends State<_ListDialog> {
+  late final List<TextEditingController> _controllers = [
+    for (final s in widget.items) TextEditingController(text: s),
+  ];
+
+  @override
+  void dispose() {
+    for (final c in _controllers) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        title: Text(widget.title),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView(
+            shrinkWrap: true,
+            children: <Widget>[
+              for (var i = 0; i < _controllers.length; i++)
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: TextField(
+                        controller: _controllers[i],
+                        decoration: paperInputDecoration(context, '第 ${i + 1} 项'),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.remove_circle_outline),
+                      tooltip: '删除该项',
+                      onPressed: () => setState(() => _controllers.removeAt(i)),
+                    ),
+                  ],
+                ),
+              TextButton.icon(
+                onPressed: () =>
+                    setState(() => _controllers.add(TextEditingController())),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('添加一项'),
+              ),
+            ],
+          ),
+        ),
+        actions: <Widget>[
+          TextButton(onPressed: () => context.pop(), child: const Text('取消')),
+          FilledButton(
+            onPressed: () => context.pop(_controllers
+                .map((c) => c.text.trim())
+                .where((s) => s.isNotEmpty)
+                .toList()),
+            child: const Text('确定'),
+          ),
+        ],
+      );
+}
+
+class _NpcDialog extends StatefulWidget {
+  const _NpcDialog();
+
+  @override
+  State<_NpcDialog> createState() => _NpcDialogState();
+}
+
+class _NpcDialogState extends State<_NpcDialog> {
+  final _name = TextEditingController();
+  final _affiliation = TextEditingController();
+  final _role = TextEditingController();
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _affiliation.dispose();
+    _role.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        title: const Text('添加 NPC'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            TextField(
+              controller: _name,
+              autofocus: true,
+              decoration: paperInputDecoration(context, '姓名（高频人物名）'),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _affiliation,
+              decoration: paperInputDecoration(context, '归属（势力名或「散人」）'),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _role,
+              decoration: paperInputDecoration(context, '一句话简介'),
+            ),
+          ],
+        ),
+        actions: <Widget>[
+          TextButton(onPressed: () => context.pop(), child: const Text('取消')),
+          FilledButton(
+            onPressed: () => context.pop((
+              _name.text.trim(),
+              _affiliation.text.trim(),
+              _role.text.trim(),
+            )),
+            child: const Text('添加'),
+          ),
+        ],
+      );
 }

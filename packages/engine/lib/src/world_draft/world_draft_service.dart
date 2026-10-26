@@ -13,6 +13,7 @@ import '../llm/settings.dart' show GatewayRole;
 import '../prompts/roles.dart' show extractJson;
 import 'checks.dart';
 import 'draft_models.dart';
+import 'import_models.dart';
 import 'prompts.dart' as dp;
 
 /// 访谈一轮的结果（API 参考 WorldDraftService.interview）
@@ -124,14 +125,37 @@ class WorldDraftService {
     );
   }
 
-  /// 删除草稿（试玩局随 runs 级联清理由调用方用 deleteRun 处理）
+  /// 删除草稿（试玩局随 runs 级联清理由调用方用 deleteRun 处理）。
+  /// 导入草稿删除时级联清理其导入作业与分块：否则同文件重导会按
+  /// content_hash 命中残留任务，draftId 指向已删草稿形成死链。
   Future<void> delete(String draftId) async {
     final row = await _row(draftId);
     if (row == null) return;
     if (row.status == DraftStatus.generating.name) {
       throw EngineException(EngineCode.stateInvalid, '生成进行中，无法删除');
     }
-    await (db.delete(db.worldDrafts)..where((d) => d.id.equals(draftId))).go();
+    final activeJob = await (db.select(db.importJobs)
+          ..where((j) =>
+              j.draftId.equals(draftId) &
+              j.stage.isIn(const ['queued', 'extracting', 'merging', 'compressing'])))
+        .getSingleOrNull();
+    if (activeJob != null) {
+      throw EngineException(EngineCode.stateInvalid, '导入进行中，无法删除');
+    }
+    final jobIds = await (db.select(db.importJobs)
+          ..where((j) => j.draftId.equals(draftId)))
+        .map((j) => j.id)
+        .get();
+    await db.transaction(() async {
+      if (jobIds.isNotEmpty) {
+        await (db.delete(db.importChunks)..where((c) => c.jobId.isIn(jobIds)))
+            .go();
+      }
+      await (db.delete(db.importJobs)..where((j) => j.draftId.equals(draftId)))
+          .go();
+      await (db.delete(db.worldDrafts)..where((d) => d.id.equals(draftId)))
+          .go();
+    });
   }
 
   // ---- 结构化访谈 ----
@@ -351,6 +375,7 @@ class WorldDraftService {
 
       final identities = await _identities(bible, core, content);
 
+      _ensureFactionBases(bible);
       final quality = reviewBible(bible);
       final now = DateTime.now().millisecondsSinceEpoch;
       await _patch(draftId, WorldDraftsCompanion(
@@ -373,6 +398,19 @@ class WorldDraftService {
           '世界生成失败：$e', canRetry: true);
     }
     return (await get(draftId))!;
+  }
+
+  /// 合成器可能漏写据点（提示词约束并非保证）：无据点势力自动挂到危险度最低
+  /// 的区域（最宜定居），否则 error 门禁会永久阻塞试玩/冻结，而地区只读无法自救
+  void _ensureFactionBases(WorldBible bible) {
+    final based = <String>{for (final r in bible.regions) ...r.factionIds};
+    final unbased = bible.factions.where((f) => !based.contains(f.id)).toList();
+    if (unbased.isEmpty || bible.regions.isEmpty) return;
+    var host = bible.regions.first;
+    for (final r in bible.regions) {
+      if (r.danger < host.danger) host = r;
+    }
+    host.factionIds.addAll(unbased.map((f) => f.id));
   }
 
   WorldBible _mergeContent(WorldBible core, String contentJson) {
@@ -462,7 +500,18 @@ class WorldDraftService {
       // schemaVersion 与校验和不可经编辑器修改（世界创造与导入 §5）
       bible.schemaVersion = 1;
       final quality = reviewBible(bible);
-      qualityRaw = jsonEncode(quality.toJson());
+      // 导入草稿：覆盖率门禁不得被编辑器保存抹掉——否则改个标题即可绕过
+      // IMPORT_COVERAGE_LOW 试玩（世界创造与导入 §4.4）。用导入实体对新圣经重算。
+      final covIssue = await _importCoverageIssue(draftId, bible);
+      qualityRaw = jsonEncode(
+        (covIssue == null
+                ? quality
+                : QualityReport(
+                    score: (quality.score - 35).clamp(0, 100),
+                    issues: [...quality.issues, covIssue],
+                  ))
+            .toJson(),
+      );
       patchedBible = bible;
     }
     final patch = WorldDraftsCompanion(
@@ -482,6 +531,33 @@ class WorldDraftService {
     );
     await _patch(draftId, patch);
     return (await get(draftId))!;
+  }
+
+  /// 导入草稿的主要人物覆盖率门禁：前 20 高频人物在新圣经中的命中率 <80%
+  /// 时返回错误条目（与 ImportService._ensureCoverage 同口径，世界创造与导入 §4.4）
+  Future<QualityIssue?> _importCoverageIssue(
+      String draftId, WorldBible bible) async {
+    final jobs = await (db.select(db.importJobs)
+          ..where((j) => j.draftId.equals(draftId))
+          ..orderBy([(j) => OrderingTerm.desc(j.updatedAt)])
+          ..limit(1))
+        .get();
+    if (jobs.isEmpty || jobs.first.entities == null) return null;
+    try {
+      final entities = asListOfMaps<ImportEntity>(
+          jsonDecode(jobs.first.entities!), ImportEntity.fromJson);
+      final coverage = characterCoverage(entities, bible.toJson());
+      if (coverage >= 0.8) return null;
+      return QualityIssue(
+        level: 'error',
+        field: 'npcPool',
+        code: 'IMPORT_COVERAGE_LOW',
+        message:
+            '主要人物覆盖率 ${(coverage * 100).round()}%（需 ≥80%），在编辑器把高频人物补进 NPC 池后再试玩',
+      );
+    } catch (_) {
+      return null;
+    }
   }
 
   // ---- 试玩 ----

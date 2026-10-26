@@ -466,7 +466,7 @@ void main() {
       expect(view.status, DraftStatus.review);
     });
 
-    test('generate：势力无据点 → 冻结时 QUALITY_GATE_FAILED', () async {
+    test('generate：势力无据点自动挂到危险度最低区域，门禁不再卡死', () async {
       final d = await service.create(DraftSource.dialogue);
       for (final k in FieldKey.values) {
         fake.expect(
@@ -476,7 +476,9 @@ void main() {
         await service.interview(d.id, '', skip: true);
       }
       final core = _cangwuCore();
-      (core['regions'] as List).first['factionIds'] = <String>[];
+      final firstRegion = (core['regions'] as List).first as Map;
+      final orphanFid = (firstRegion['factionIds'] as List).first as String;
+      firstRegion['factionIds'] = <String>[];
       fake.expect(GatewayRole.composer, jsonEncode(core));
       fake.expect(GatewayRole.composer, jsonEncode(_cangwuContent()));
       fake.expect(
@@ -485,9 +487,14 @@ void main() {
             'identities': _cangwuIdentities().map((i) => i.toJson()).toList(),
           }));
       final view = await service.generate(d.id);
-      expect(view.issues.map((i) => i.code), contains('FACTION_NO_BASE'));
-      await expectLater(service.freeze(d.id),
-          throwsA(predicate((e) => e is EngineException && e.code == EngineCode.qualityGateFailed)));
+      expect(view.issues.map((i) => i.code), isNot(contains('FACTION_NO_BASE')));
+      final detail = await service.detail(d.id);
+      expect(detail.bible!.regions.any((r) => r.factionIds.contains(orphanFid)),
+          isTrue);
+      final frozen = await service.freeze(d.id);
+      expect(frozen.worldId, isNotEmpty);
+      final after = await service.detail(d.id);
+      expect(after.view.status, DraftStatus.frozen);
     });
 
     test('save：schemaVersion 不可改，标题可改并重算质量', () async {

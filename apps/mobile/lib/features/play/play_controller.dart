@@ -94,6 +94,7 @@ class PlayController extends Notifier<PlayState> {
         ended: view.head.status == 'ended',
         phase: _phaseFor(view.head.status == 'ended', choices),
       );
+      await _loadDisplayNames(view.head.worldId, view.head.worldVersion);
     } on EngineException catch (e) {
       state = state.copyWith(
         phase: PlayPhase.error,
@@ -115,6 +116,33 @@ class PlayController extends Notifier<PlayState> {
     if (ended) return PlayPhase.idle;
     if (!_engine.modelSettings.configured) return PlayPhase.blocked;
     return choices.isNotEmpty ? PlayPhase.awaitingChoice : PlayPhase.idle;
+  }
+
+  /// 状态条的关系/声望徽章存的是 id（relations key = npcId，reputation key = factionId），
+  /// 展示需经圣经映射显示名；取不到圣经或条目时由 UI 回退 id
+  Future<void> _loadDisplayNames(String worldId, int version) async {
+    try {
+      // 试玩局 worldId 形如 draft_<draftId>、版本恒 0，圣经在草稿行而非 worlds 表
+      final WorldBible bible;
+      if (worldId.startsWith('draft_')) {
+        final detail = await _engine.drafts.detail(worldId.substring('draft_'.length));
+        final b = detail.bible;
+        if (b == null) return;
+        bible = b;
+      } else {
+        bible = await _engine.loadBible(worldId, version);
+      }
+      state = state.copyWith(
+        npcNames: <String, String>{
+          for (final n in bible.npcPool) n.id: n.name,
+        },
+        factionNames: <String, String>{
+          for (final f in bible.factions) f.id: f.name,
+        },
+      );
+    } on EngineException {
+      // 圣经取不到不阻塞游玩，徽章回退显示 id
+    }
   }
 
   /// 推进一回合。submitting / streaming 期间忽略新提交（队列只接受一次）。

@@ -188,7 +188,12 @@ class _PlayPageState extends ConsumerState<PlayPage> {
                     onRetry: () =>
                         ref.read(playProvider(widget.runId).notifier).retry(),
                   ),
-                if (hasState) _StatusStrip(state: play.state!),
+                if (hasState)
+                  _StatusStrip(
+                    state: play.state!,
+                    npcNames: play.npcNames,
+                    factionNames: play.factionNames,
+                  ),
                 Expanded(
                   child: NotificationListener<UserScrollNotification>(
                     onNotification: _onUserScroll,
@@ -268,9 +273,15 @@ class _ErrorBar extends StatelessWidget {
 
 /// 状态条：气血 / 神识 / 灵石 / 声望 / 关键关系 / 寿元（只取 RunState）
 class _StatusStrip extends StatelessWidget {
-  const _StatusStrip({required this.state});
+  const _StatusStrip({
+    required this.state,
+    this.npcNames = const <String, String>{},
+    this.factionNames = const <String, String>{},
+  });
 
   final RunState state;
+  final Map<String, String> npcNames;
+  final Map<String, String> factionNames;
 
   @override
   Widget build(BuildContext context) {
@@ -305,13 +316,15 @@ class _StatusStrip extends StatelessWidget {
     if (state.reputation.isEmpty) return '—';
     final e = state.reputation.entries.first;
     final v = e.value;
-    return '${e.key} ${v > 0 ? '+' : ''}$v';
+    final name = factionNames[e.key] ?? e.key;
+    return '$name ${v > 0 ? '+' : ''}$v';
   }
 
   String get _relation {
     if (state.relations.isEmpty) return '—';
     final e = state.relations.entries.first;
-    final name = e.key.replaceFirst(RegExp('^npc_'), '').replaceAll('_', ' ');
+    final name =
+        npcNames[e.key] ?? e.key.replaceFirst(RegExp('^npc_'), '').replaceAll('_', ' ');
     return '$name · ${e.value.status.label}';
   }
 

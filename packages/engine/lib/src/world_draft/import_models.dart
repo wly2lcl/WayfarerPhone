@@ -278,7 +278,9 @@ String decodeNovelBytes(List<int> bytes) {
 /// 解码 + 检测章节数 + 分块（3000 字 / 重叠 400）
 ({List<NovelChunk> chunks, int chapters}) decodeAndChunk(List<int> bytes) {
   final text = decodeNovelBytes(bytes);
-  final chapterRe = RegExp(r'第[0-9〇零一二三四五六七八九十百千万]+[章节卷回]');
+  // 章节头必须位于行首（允许全角/半角空格缩进）；正文行中提及「第N章」不计入
+  final chapterRe = RegExp(r'^[ \t\u3000]*第[0-9〇零一二三四五六七八九十百千万]+[章节卷回]',
+      multiLine: true);
   final headers = chapterRe
       .allMatches(text)
       .map((m) => m.start)
