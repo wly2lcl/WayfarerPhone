@@ -180,8 +180,7 @@ class WorldDraftService {
     FieldData data;
     var filledByAI = false;
     if (skip) {
-      data = await _defaultFill(field, _worldHint(interview)) ??
-          _staticDefault(field);
+      data = await _qualifiedFill(field, _worldHint(interview));
       filledByAI = true;
     } else {
       var parse = await _extract(field, text, existing);
@@ -203,8 +202,7 @@ class WorldDraftService {
         );
       }
       if (parse.skip) {
-        data = await _defaultFill(field, _worldHint(interview)) ??
-            _staticDefault(field);
+        data = await _qualifiedFill(field, _worldHint(interview));
         filledByAI = true;
       } else if (parse.data.isNotEmpty) {
         data = parse.data;
@@ -290,6 +288,14 @@ class WorldDraftService {
     } on EngineException {
       return null;
     }
+  }
+
+  /// AI 代填 + 形状验收：代填 map 非空但缺键/空表（形状漂移）时单字段打分为 0，
+  /// 此时退回静态兜底，避免「代填成功」却产出 0 分字段（真机：AI·基调 0）
+  Future<FieldData> _qualifiedFill(FieldKey field, String hint) async {
+    final ai = await _defaultFill(field, hint);
+    if (ai != null && scoreField(field, ai) > 0) return ai;
+    return _staticDefault(field);
   }
 
   // ---- 生成与校验 ----

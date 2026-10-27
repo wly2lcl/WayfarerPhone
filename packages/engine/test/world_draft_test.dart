@@ -368,6 +368,21 @@ void main() {
       expect(interview.answers[FieldKey.era]!.data['summary'], '代填时代');
     });
 
+    test('interview：代填形状漂移（非空但缺键）→ 退回静态兜底', () async {
+      final d = await service.create(DraftSource.dialogue);
+      fake.expect(
+          GatewayRole.interview,
+          jsonEncode(
+              {'skip': false, 'contradiction': null, 'data': {'note': '形状漂移'}}));
+      final r = await service.interview(d.id, '', skip: true);
+      expect(r.advanced, isTrue);
+      expect(r.filledByAI, isTrue);
+      final detail = await service.detail(d.id);
+      final data = detail.interview!.answers[FieldKey.era]!.data;
+      expect(asSOr(data['summary'], ''), contains('末法'));
+      expect(detail.view.fields[FieldKey.era]!.score, 100);
+    });
+
     test('八轮跳过后 completeness 100，可 generate', () async {
       final d = await service.create(DraftSource.dialogue);
       for (final k in FieldKey.values) {
