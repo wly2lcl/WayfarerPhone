@@ -8,6 +8,7 @@ import '../data/app_db.dart';
 import '../data/runs_dao.dart';
 import '../engine.dart' show StartResult;
 import '../errors.dart';
+import '../library/checksum.dart';
 import '../llm/gateway.dart';
 import '../llm/settings.dart' show GatewayRole;
 import '../prompts/roles.dart' show extractJson;
@@ -779,20 +780,8 @@ class WorldDraftService {
 
   String _packageChecksum(
       WorldBible bible, List<Identity> identities, List<EventSeed> seeds) {
-    Object? sortKeys(Object? v) {
-      if (v is Map) {
-        final keys = v.keys.map((k) => k.toString()).toList()..sort();
-        return {for (final k in keys) k: sortKeys(v[k])};
-      }
-      if (v is List) return v.map(sortKeys).toList();
-      return v;
-    }
-
-    return jsonEncode({
-      'bible': sortKeys(bible.toJson()),
-      'identities': sortKeys(identities.map((i) => i.toJson()).toList()),
-      'seeds': sortKeys(seeds.map((s) => s.toJson()).toList()),
-    });
+    return internalWorldChecksum(bible.toJson(),
+        identities.map((i) => i.toJson()).toList(), seeds.map((s) => s.toJson()).toList());
   }
 
   // ---- 内部 ----

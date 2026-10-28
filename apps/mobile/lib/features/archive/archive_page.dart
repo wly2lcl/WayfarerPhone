@@ -2,10 +2,12 @@ import 'package:engine/engine.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../app/providers.dart';
 import '../../core/engine_errors.dart';
 import '../../core/ui/paper.dart';
+import '../worlds/worlds_provider.dart';
 
 /// 人生档案：结局标题、盖棺定论、标签、关键选择
 class ArchivePage extends ConsumerStatefulWidget {
@@ -25,6 +27,43 @@ class _ArchivePageState extends ConsumerState<ArchivePage> {
   void initState() {
     super.initState();
     _future = ref.read(engineProvider).archive(widget.runId);
+  }
+
+  /// 人生卡片（只读文本）：世界名、结局、关键选择、时长 + AI 生成角标；
+  /// 不含世界定义与 NPC 私密面，可直接分享
+  Future<void> _shareLifeCard(Archive archive) async {
+    final engine = ref.read(engineProvider);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final head = (await engine.getRun(widget.runId)).head;
+      final worlds = ref.read(worldsProvider).value ?? const <WorldSummary>[];
+      var worldName = head.worldId;
+      for (final w in worlds) {
+        if (w.id == head.worldId) worldName = w.title;
+      }
+      final choices =
+          archive.keyChoices.take(3).toList(growable: false);
+      final card = StringBuffer()
+        ..writeln('【人生卡片】$worldName')
+        ..writeln('结局：${archive.title}')
+        ..writeln('历时 ${archive.turns} 回合');
+      if (choices.isNotEmpty) {
+        card.writeln();
+        card.writeln('关键选择：');
+        for (var i = 0; i < choices.length; i++) {
+          card.writeln('${i + 1}. ${choices[i]}');
+        }
+      }
+      card.writeln();
+      card.write('※ 本故事由 AI 辅助生成 · 远行');
+      await SharePlus.instance
+          .share(ShareParams(text: card.toString(), title: '人生卡片 · $worldName'));
+    } on EngineException catch (e) {
+      messenger.showSnackBar(
+          SnackBar(content: Text('${engineCodeLabel(e.code)}：${e.message}')));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('分享失败：$e')));
+    }
   }
 
   void _reload() {
@@ -133,6 +172,12 @@ class _ArchivePageState extends ConsumerState<ArchivePage> {
                   ),
                 ),
               const SizedBox(height: 32),
+              OutlinedButton.icon(
+                onPressed: () => _shareLifeCard(archive),
+                icon: const Icon(Icons.ios_share_outlined, size: 18),
+                label: const Text('导出人生卡片'),
+              ),
+              const SizedBox(height: 10),
               FilledButton(
                 onPressed: _branching ? null : _branchAndReplay,
                 style: FilledButton.styleFrom(

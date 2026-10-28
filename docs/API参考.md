@@ -1,8 +1,10 @@
 # API 参考 · 本地引擎与模型网关
 
-> 版本：v0.4（单机离线）
-> 最后更新：2026-10-24
+> 版本：v0.7（单机离线）
+> 最后更新：2026-10-27
 > 上游：[技术方案](./技术方案.md) ｜ 相关：[Prompt 契约](./Prompt契约.md)
+>
+> v0.7 变更：M3 分享闭环落地——§3 `library.*()`（export/import/rename/delete/space）与 `runs.exportPack/importPack` 由「未实现」改为已实现语义：可导出性门禁（builtin/imported 世界 `exportable=0` → `EXPORT_FORBIDDEN`，试玩局不可导出）、`WorldSummary`/`RunHead` 增 `exportable`（客户端据此隐藏导出入口）、`formatVersion` 兼容检查、runId 冲突自动改后缀、导入五分支。
 >
 > v0.4 变更：M1 世界工坊接口落地——新增 `drafts.*()` 门面定义与错误码语义；`runs.list()` 标注不含试玩局。
 >
@@ -98,10 +100,11 @@ class EngineException implements Exception {
 | `imports.entities(jobId)` | 归并后的实体列表（审阅用） |
 | `imports.updateEntities(jobId, {removeKeys, mergeInto})` | 实体审阅：删除 / 合并（频次、别名、属性并入目标），采纳率 = 现存 / entitiesTotal |
 | `imports.regenerate(jobId, {fidelity})` | 用审阅后的实体重新生成世界（仅 draft 状态可重跑），可换合成档位 |
-| `library.import(File)` | 导入 `.world` 包 |
-| `library.export(worldId)` | 导出 `.world` 包，返回文件路径 |
+| `library.import(File)` | 导入 `.world` 包（五分支冲突处理，见 §3） |
+| `library.export(worldId)` | 导出 `.world` 包到 `files/exports/` 并返回路径；`exportable = 0` 抛 `EXPORT_FORBIDDEN` |
 | `library.rename(worldId, title)` | 重命名本地世界 |
 | `library.delete(worldId)` | 删除世界、版本与原件 |
+| `library.space()` | 各世界占用（`files/worlds/<id>/` 导入原件）+ 导入原文缓存字节 |
 | `usage.summary({from, to})` | 本地用量与成本估算 |
 | `settings.testConnection()` | 用最小请求验证 baseUrl + Key + 模型名 |
 
@@ -121,7 +124,8 @@ final engine = await Engine.open();
 
 ```dart
 final worlds = await engine.listWorlds();
-// WorldSummary(id, title, genre, summary, source, version, identityCount, updatedAt)
+// WorldSummary(id, title, genre, summary, source, version, identityCount, updatedAt, exportable)
+// exportable：builtin/imported 为 false（不可导出），created/shared 为 true；客户端据此隐藏导出入口
 ```
 
 ### worlds.get(worldId)
@@ -155,7 +159,8 @@ final start = await engine.create(
 ```dart
 final view = await engine.getRun('r_2b9');
 // RunView(head: RunHead, state, pendingChoices)
-// RunHead 含 id/status/chapter/turnNo/headSnapshotId/endingId；
+// RunHead 含 id/status/chapter/turnNo/headSnapshotId/endingId/exportable；
+// exportable 取所属世界 worlds.exportable（缺失按 true），客户端据此隐藏 `.run` 导出按钮；
 // listRuns() 额外解析 endingTitle（终局名，展示用）
 ```
 
@@ -258,9 +263,28 @@ await engine.imports.resume(job.id);                     // 杀进程后断点�
 - 采纳率 = 审阅后现存实体数 / `entitiesTotal`（归并基准，客户端向导展示）
 - `source=import` 的草稿与冻结世界 `exportable=false`（数据层固化，见[世界创造与导入](./世界创造与导入.md) §4.7）；导入原文只存沙盒 `files/imports/`，不进任何导出路径
 
-### library.export() / library.import()（未实现，M3）
+### library.*() / runs.exportPack() / runs.importPack()（M3 分享闭环，已实现）
 
-> 规划接口，当前引擎与客户端均未提供。目标语义：导出前置检查 `worlds.exportable = 1`，否则 `EXPORT_FORBIDDEN`；包格式与校验规则见[世界分享与本地世界库](./世界分享与UGC.md) §4。实现排期见 TODO 的 M1/M2 条目。
+```dart
+final out = await engine.library.export('w_e811');
+// ExportedFile(path, fileName, bytes)；写入 files/exports/wayfarer-world-<id>-v<N>.world
+final r = await engine.library.import(file.path);
+// WorldImportResult(worldId, version, title, action)
+// action 五分支：created / version_added / saved_as_new / skipped / overwritten
+await engine.library.rename('w_e811', '末法残卷新名');
+await engine.library.delete('w_e811');                    // 级联删版本、种子与导入原件
+final report = await engine.library.space();              // SpaceReport(worlds[], importsBytes)
+final pack = await engine.exportRunPack('r_e811');        // .run 存档包导出
+final imp = await engine.importRunPack(path);             // RunImportResult(runId, renamed)
+```
+
+- **可导出性门禁**：`library.export` 与 `runs.exportPack` 均校验 `worlds.exportable`；`exportable = 0`（builtin 内置 / imported 小说导入世界）抛 `EXPORT_FORBIDDEN`。试玩局（`is_trial = 1`）导出存档包抛 `STATE_INVALID`（「试玩局不可导出」）。`.run` 可导出性跟随所属世界（世界分享与UGC §4）
+- **导出入口**：客户端据 `WorldSummary.exportable` / `RunHead.exportable` 隐藏导出菜单与按钮（不导出的世界连入口都不可见）；导出文件经系统分享面板发出
+- **导入校验**（`WorldPackage.unpack` / `RunPackage.unpack`）：20 MB 上限（`IMPORT_TOO_LARGE`）、zip 解析失败与缺文件（`IMPORT_INVALID` 具体到字段）、`formatVersion` 高于/低于本机支持值均拒绝、`manifest.aiGenerated != true` 拒绝（AI 生成标识不可关闭）、checksum 不匹配拒绝（`CHECKSUM_MISMATCH`，篡改任意字节后导入被拒）
+- **世界导入冲突处理**（世界分享与UGC §6）：同 worldId 同版本 checksum 相同 → `skipped`；同版本 checksum 不同 → 默认 `skipped`，`overwrite: true` 时 `overwritten`（删除旧版本行后重插）；更高版本 → `version_added`（追加并推进 latestVersion）；更低版本 → `saved_as_new`（新 worldId 另存，不降级已有版本）；无同名世界 → `created`。标题与已有世界同名时追加「（导入 N）」去重（`_dedupeTitle`）
+- **存档包导入**：缺对应 `worldId + worldVersion` 时 `NOT_FOUND` 拒收，不留半成品；runId 冲突自动改后缀（`r_e811` → `r_e811_2`，`renamed = true`）；导入后从原 `turnNo` 与最新快照续玩
+- **删除**：`library.delete` 级联删除版本、全部存档（局/快照/事件/检索索引）与导入原件，返回删除的局数；UI 在有存档时二次确认并说明影响（世界分享与UGC §8）
+- **来源与再导出**：导入的 `.world` 落 `source = 'shared'` 且 `exportable = 1`，再导出时 `manifest.origin = 'shared'`、`sourceWorldId` 保留原 worldId、NOTICE.txt 保留原作者声明（世界分享与UGC §7）；导入原件存私有 `files/worlds/<worldId>/v<N>.world`（仅占用统计，不进导出路径）
 
 ### usage.summary()
 
@@ -400,5 +424,6 @@ class TurnError        extends TurnEvent { final EngineCode code; final String m
 | 2026-10-23 | v0.2：改为本地引擎门面 + 模型网关契约；删除账号、配额、409、幂等键与服务端错误码 |
 | 2026-10-23 | v0.3：新增三种模型协议适配、供应商预设、`.run` 存档包导入导出 |
 | 2026-10-24 | v0.4：M1 世界工坊接口——§2/§3 新增 `drafts.*()`（create/interview/generate/detail/save/trial/discardTrial/freeze/delete），`DraftView` 与质量门语义；`runs.list()` 标注不含试玩局；`WORLD_FROZEN` 对齐实现（重复冻结同码） |
+| 2026-10-27 | v0.7：M3 分享闭环——§3 `library.*()`（export/import/rename/delete/space）与 `runs.exportPack/importPack` 已实现语义：exportable 门禁（builtin/imported 世界 `EXPORT_FORBIDDEN`、试玩局 `STATE_INVALID`）、`WorldSummary`/`RunHead` 增 `exportable`、`formatVersion`/`aiGenerated`/checksum 导入校验、世界导入五分支与 `.run` runId 冲突改后缀；`runs.exportPack/importPack` 门面方法为 `Engine.exportRunPack/importRunPack` |
 | 2026-10-25 | v0.5：M2 小说导入接口——§2/§3 新增 `imports.*()`（start/resume/progress/listJobs/entities/updateEntities/regenerate），ImportJobView 阶段机、start 去重续跑、覆盖率闸门与实体审阅边界；`IMPORT_INVALID`/`IMPORT_TOO_LARGE` 错误码含义扩展到 TXT 导入；library.export/import 标注 M3 |
 | 2026-10-26 | v0.6：合成档位——`imports.start(path, {fidelity})` / `imports.regenerate(jobId, {fidelity})` 带 `ImportFidelity`（fast/standard/faithful，默认 fast）；阶段机加忠实档 `compressing`（压缩失败自动降级标准采样）；start 去重进行中集合加 compressing；ImportJobView 增 `fidelity` 字段 |

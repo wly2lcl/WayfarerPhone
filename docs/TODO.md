@@ -1,7 +1,7 @@
 # TODO
 
 > 版本：v0.2（单机离线）
-> 最后更新：2026-10-24
+> 最后更新：2026-10-27
 > 上游：[工程与开发计划](./工程与开发计划.md) ｜ 配套：[开发文档](./开发文档.md)、[技术方案](./技术方案.md)
 >
 > v0.2 变更：任务全部按「单机 App」重拆。删除服务端、账号、配额、审核队列、社区相关条目；新增模型 Key 设置、模型网关、本地世界库、`.world` 导入导出。
@@ -287,27 +287,34 @@
 
 进入条件：M1/M2 链路稳定；`.world` 包格式与校验通过评审。
 
-- [ ] **WF-M3-01-01 世界包格式**
+- [x] **WF-M3-01-01 世界包格式**
   产出：zip（`manifest.json` + `bible.json` + `identities.json` + `seeds.json` + `NOTICE.txt`）+ `checksum`
   验收：篡改任意字节后导入被拒；`aiGenerated` 不可关闭
-- [ ] **WF-M3-02-01 导出**
+  证据：引擎单测（打包/解包往返、篡改 `CHECKSUM_MISMATCH`、`aiGenerated != true` 拒绝、`formatVersion` 高于/低于支持值拒绝、缺文件 `IMPORT_INVALID`）；checksum 为 `{bible, identities, seeds}` 规范化 JSON（键排序、无空白）的 SHA-256（[世界分享与UGC](./世界分享与UGC.md) §3）。实现决策：zip 条目 store（不压缩）模式，规避 archive 3.6.1 与 python zipfile 的 CRC 兼容问题（`_assertStandardZip` 单测防回归）。真机——导出包经 python zipfile `testzip` CRC 全过、逐条目 csize==usize；篡改包导入 snackbar「校验和不匹配」拒收
+- [x] **WF-M3-02-01 导出**
   产出：`library.export()` + 系统分享面板
   验收：导出前校验 `exportable`；文件可在「文件」App 中找到
-- [ ] **WF-M3-02-02 导入**
+  证据：引擎单测——builtin 世界 `EXPORT_FORBIDDEN`（含存量库幂等修正：旧版本升级后 builtin 世界的 exportable 自动修正为 0）、created/shared 可导出、shared 再导出 `manifest.origin='shared'`；真机——内置苍梧详情菜单仅重命名/删除（无导出入口），created 世界「导出分享」生成 `wayfarer-world-w_e811-v1.world`（CRC/checksum 验证通过），shared 苍梧（导入 2）再导出包保留原 NOTICE 与 `sourceWorldId`。**环境注记**：BlueStacks 无接收分享的应用（面板提示「没有应用可执行此操作」），「文件 App 可见」以 adb pull 导出文件 + 外部目录浏览替代验证；真机（有文件 App 的设备）上由 `share_plus` 系统面板承接
+- [x] **WF-M3-02-02 导入**
   产出：`library.import()` + 冲突处理（同名 / 同 id）
   验收：版本兼容检查；损坏包给出具体原因
-- [ ] **WF-M3-03-01 世界库管理**
+  证据：五分支单测齐备（created/version_added/saved_as_new/skipped/overwritten）+ 标题同名追加「（导入 N）」；`formatVersion` 兼容检查（高于本机提示升级 App，低于无效）。真机三分支：同包重导「本机已有相同版本，已跳过」、导入新包 created 出「苍梧（导入 2）」（管理页 5 世界 · 33.6 KB 含导入原件）、篡改包「校验和不匹配」且世界数不变
+- [x] **WF-M3-03-01 世界库管理**
   产出：重命名、删除、占用空间、排序
   验收：删除世界时若有存档给出二次确认并说明影响
-- [ ] **WF-M3-03-02 人生卡片导出**
+  证据：管理页（共 N 个世界 · 占用、按名称/按空间排序、导入原件缓存单独列示「不可导出」）；详情菜单重命名（snackbar 确认）与删除（有存档时确认框「下有 N 个存档，删除后将一并清除，不可恢复」，成功提示「已删除世界与 N 个存档」）；引擎 `delete()` 级联删局/快照/事件/检索索引/导入原件并返回局数（单测）。真机走查管理页列表与占用统计（builtin/created 0 B、shared 33.6 KB）
+- [x] **WF-M3-03-02 人生卡片导出**
   产出：只读图片或纯文本（世界名、结局、关键选择、时长）
   验收：不含世界定义与 NPC 私密面；带「AI 生成」角标
-- [ ] **WF-M3-04-01 存档包格式与导出**
+  证据：实现为纯文本（`archive_page._shareLifeCard`）：【人生卡片】世界名 / 结局：终局名 / 历时 N 回合 / 关键选择 top3 / ※ 本故事由 AI 辅助生成 · 远行；数据仅取 `archive()`（endingId/title/turns/keyChoices）与世界标题，不含圣经、种子与 NPC 私密面。真机——档案页「导出人生卡片」点击后系统分享面板弹出（文本已随 intent 附带）；BlueStacks 无接收应用无法展示面板内预览（环境限制，同 02-01 注记）
+- [x] **WF-M3-04-01 存档包格式与导出**
   产出：`.run` 打包（`manifest.json` + `run.json` + `snapshots.jsonl` + `events.jsonl` + `checksum`）+ `runs.exportPack()`
   验收：篡改任意字节后导入被拒；所属世界 `exportable = 0` 时抛 `EXPORT_FORBIDDEN`
-- [ ] **WF-M3-04-02 存档包导入**
+  证据：引擎单测——打包/解包往返、篡改拒收、试玩局导出拒绝（`STATE_INVALID`「试玩局不可导出」）、builtin 世界（exportable=0）的局 `EXPORT_FORBIDDEN`；`RunHead.exportable` 随 `listRuns` 带出。真机——created 世界存档「导出」生成 `r_e811-t0.run`（python 验证 CRC PASS、manifest aiGenerated=true、1 快照 2 事件、canonical checksum 匹配）；我的局列表中 builtin 苍梧两局无导出按钮、created 世界两局有（UI 门禁对照）
+- [x] **WF-M3-04-02 存档包导入**
   产出：`runs.importPack()` + 缺世界提示 + `runId` 冲突改写
   验收：缺对应 `worldId + worldVersion` 时拒绝且不留半成品；可续玩到原进度
+  证据：引擎单测——缺世界版本 `NOT_FOUND` 不落库、runId 冲突自动改后缀 `r_e811_2`（`renamed=true`）；真机——导入 `m3_run.run` snackbar「导入成功（本机已有同编号存档，已保存为 r_e811_2）」，我的局 3→4 行且同名局并列，点「继续」进入游玩页恢复原进度（第 1 卷·炼气，属性条/序章正文/选项/输入框完整）
 
 ---
 
@@ -359,6 +366,7 @@
 
 | 日期 | 变更 |
 | --- | --- |
+| 2026-10-27 | M3 分享闭环全部勾选（引擎 160/160 单测 + flutter analyze 清洁 + BlueStacks 真机全链路）：`.world`/`.run` 打包解包（store 模式规避 archive 3.6.1 CRC 兼容问题，`_assertStandardZip` 防回归）、`library.export/import/rename/delete/space` + `runs.exportPack/importPack`、可导出性门禁（builtin/imported 世界 `exportable=0` → `EXPORT_FORBIDDEN`，试玩局拒绝导出，`WorldSummary`/`RunHead.exportable` 驱动 UI 隐藏入口，含 builtin 存量库幂等修正）、世界导入五分支 + 标题去重、runId 冲突改后缀、人生卡片纯文本导出；真机验证——导出→python CRC/checksum 校验、导入 skipped/created/篡改拒收三分支、shared 再导出保留原 NOTICE/`sourceWorldId`、`.run` 往返 + 冲突改写 + 续玩原进度、人生卡片分享面板触发；环境注记：BlueStacks 无接收分享的应用，「文件 App 可见」以 adb pull + 目录浏览替代验证。文档 v0.7（API参考）/ v0.4（世界分享与UGC）同步 |
 | 2026-10-27 | 主玩法三轮打磨（二项）：①代填形状验收 `_qualifiedFill`——跳过代填返回非空 map 但缺键/空表（形状漂移）致 `scoreField` 0 分时退回静态兜底，修真机「AI·基调 0」红章；事件种子 0（无 AI 代填角标）属未答字段如实显示非缺陷（completeness 门禁 70% 放行）；引擎补形状漂移单测 132/132；②徽章 `loadBible` 分支真机验证收口——对话共创世界（未法残局）冻结入书架（w_mvq06got_4u 第 1 版）→ 正式局身份抽取（末法孤儿）→ 序章「陈掌柜 · 相识」，试玩 `draft_` 分支 + 正式局分支双分支齐备 |
 | 2026-10-26 | 主玩法二轮打磨（三项）：①状态条关系/声望徽章按圣经映射显示名（修真机暴露的 laozhou 裸 id，试玩局走 `draft_` 草稿分支取圣经，取不到回退 id）；②快速档导入端到端真机验证收口（新文件变体防 dedupe：选档→·快速→失败续跑→12/12 采纳→100 分→试玩，三档验证齐备）；③对话共创入口 `_ensureFactionBases` 后真机回归（八字段全跳过 AI 代填→生成→100 分六项全过无 `FACTION_NO_BASE`→试玩序章「周缇领 · 敌意」）。flutter analyze 清洁；引擎 131/131 |
 | 2026-10-26 | 导入链路二轮打磨（WF-M2-06-01，六项修复）：①章节统计正则锚定行首；②删除草稿级联清理 `import_jobs`/`import_chunks`（防 content_hash dedupe 死链）；③覆盖率门禁防编辑绕过——编辑器任何一次圣经保存都用导入实体对新圣经重算覆盖率，`IMPORT_COVERAGE_LOW` 不因改标题被抹掉；④编辑器 NPC 池「添加」入口（手动 NPC 归属兜底「散人」）；⑤编辑器弹窗 dispose 红屏修复（存量 `_dependents.isEmpty` 断言 bug）；⑥无据点势力自动归一化——合成器漏写据点时自动挂到危险度最低区域（修 `FACTION_NO_BASE` 死锁，地区只读无从自救）。引擎 131/131；真机（BlueStacks）全链路回归：标题编辑/添加 NPC 无红屏、门禁持久、删除重导建新任务、标准档 12/12 采纳 100 分、试玩序章、冻结入书架（w_mvoy6ds3_28a 第 1 版）；世界创造与导入 §3.4 补自动兜底说明 |

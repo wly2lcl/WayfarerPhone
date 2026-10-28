@@ -17,3 +17,7 @@ export 'src/world_draft/draft_models.dart';
 export 'src/world_draft/import_models.dart';
 export 'src/world_draft/import_service.dart';
 export 'src/world_draft/world_draft_service.dart';
+export 'src/library/checksum.dart';
+export 'src/library/library_service.dart';
+export 'src/library/run_package.dart';
+export 'src/library/world_package.dart';

@@ -28,6 +28,11 @@ class WorldsPage extends ConsumerWidget {
             onPressed: () => context.push('/library'),
           ),
           IconButton(
+            icon: const Icon(Icons.folder_special_outlined),
+            tooltip: '世界库管理',
+            onPressed: () => context.push('/manage'),
+          ),
+          IconButton(
             icon: const Icon(Icons.settings_outlined),
             tooltip: '设置',
             onPressed: () => context.push('/settings'),

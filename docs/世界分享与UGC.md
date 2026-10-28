@@ -1,7 +1,7 @@
 # 世界分享与本地世界库
 
-> 版本：v0.3（单机离线）
-> 最后更新：2026-10-23
+> 版本：v0.4（单机离线）
+> 最后更新：2026-10-27
 > 阶段：M3
 > 上游：[世界创造与导入](./世界创造与导入.md) ｜ 相关：[合规与内容安全](./合规与内容安全.md)
 
@@ -21,7 +21,7 @@
 
 没有社区列表、热门排序、公开链接与二维码；不提供 fork 谱系，用户可复制一个世界另存为新世界，两者之间不做关联追踪。
 
-**人生卡片是另一条链路**：不含世界定义，不能被编辑，也不能作为世界导入。它只导出图片，带「AI 生成」角标。
+**人生卡片是另一条链路**：不含世界定义，不能被编辑，也不能作为世界导入。v0.4 实现为**纯文本**经系统分享面板发出（M3 任务允许「只读图片或纯文本」二选一），带「AI 生成」角标；图片形态留作后续增强。
 
 ---
 
@@ -211,19 +211,20 @@ files/exports/wayfarer-world-<worldId>-v<version>.world   导出后交给系统�
 
 ---
 
-## 9. 本机引擎动作（M3）
+## 9. 本机引擎动作（M3，已实现）
 
-以下均为进程内 Dart 调用，不是 HTTP 端点。
+以下均为进程内 Dart 调用，不是 HTTP 端点（详细语义见[API 参考](./API参考.md) §3）。
 
 | 调用 | 说明 |
 | --- | --- |
-| `worlds.list()` | 本地世界库列表，含来源与占用空间 |
-| `library.import(file)` | 选文件并校验导入，返回 `worldId` |
-| `library.export(worldId)` | 冻结版本打包到 `files/exports/` 并调起分享面板 |
-| `library.rename(worldId, title)` | 重命名 |
-| `library.delete(worldId)` | 删除世界、版本与原件 |
-| `runs.exportPack(runId)` | 导出 `.run` 存档包到 `files/exports/` 并调起分享面板 |
-| `runs.importPack(file)` | 校验并导入 `.run`，落地为本机新局 |
+| `worlds.list()` | 本地世界库列表；`WorldSummary.exportable` 随来源给出（builtin/imported 为 false） |
+| `library.import(file, {overwrite})` | 选文件并校验导入，返回 `worldId / version / title / action`（§6 五分支）；`overwrite` 仅控制同版本不同内容的覆盖 |
+| `library.export(worldId)` | 冻结版本打包到 `files/exports/` 并调起系统分享面板；`exportable = 0` 抛 `EXPORT_FORBIDDEN` |
+| `library.rename(worldId, title)` | 重命名（只改 `worlds.title`） |
+| `library.delete(worldId)` | 级联删除版本、全部存档与导入原件，返回删除局数 |
+| `library.space()` | 按世界统计 `files/worlds/<id>/` 占用 + `files/imports/` 导入原文缓存 |
+| `runs.exportPack(runId)` | 导出 `.run` 存档包到 `files/exports/` 并调起分享面板；试玩局拒绝、绑定世界 `exportable = 0` 时 `EXPORT_FORBIDDEN` |
+| `runs.importPack(file)` | 校验并导入 `.run`，落地为本机新局；runId 冲突自动改后缀（`r_xxx_2`） |
 | `WorldDraftService.freeze(draftId)` | 冻结为本地版本，见[世界创造与导入](./世界创造与导入.md) §6 |
 
 幂等由本地事务 + UI 状态机拦截重复提交实现；单设备单写入者，同源同名操作不会产生并发冲突。
@@ -256,5 +257,6 @@ files/exports/wayfarer-world-<worldId>-v<version>.world   导出后交给系统�
 
 | 日期 | 版本 | 变更 |
 | --- | --- | --- |
+| 2026-10-27 | v0.4 | M3 分享闭环落地并真机验证：§9 引擎动作全部实现（`library.space()` 补入表格）；人生卡片实现为纯文本（§1 更新，M3 任务允许图片或纯文本二选一）；实现决策注记——①zip 条目采用 store（不压缩）模式规避 archive 3.6.1 与 python zipfile 的 CRC 兼容问题并加标准 zip 回归单测；②builtin 内置世界 `exportable` 修正为 0（§2 口径「builtin 不可导出」，含存量库幂等修正），`.run` 导出联动拒绝（§4）；③再导出 shared 包保留原 NOTICE 与 `sourceWorldId`、`origin='shared'` 真机验证通过 |
 | 2026-10-23 | v0.2 | 由云架构改为单机离线，去掉账号/服务端/社区/审核后台 |
 | 2026-10-23 | v0.3 | 新增 §3.1 `.run` 存档包格式与导入规则；引擎动作补 `runs.exportPack` / `runs.importPack`；验收补存档迁移 |

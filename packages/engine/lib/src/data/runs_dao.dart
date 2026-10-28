@@ -18,6 +18,9 @@ class RunHead {
 
   /// 仅 listRuns 填充：按世界版本 bible 解析出的终局名（展示用）
   final String? endingTitle;
+
+  /// 绑定世界的可导出性（false 时 .run 不可导出，UI 隐藏导出入口）
+  final bool exportable;
   final bool isTrial;
   final String? draftId;
   final RunState? state;
@@ -33,6 +36,7 @@ class RunHead {
     this.headSnapshotId,
     this.endingId,
     this.endingTitle,
+    this.exportable = true,
     this.isTrial = false,
     this.draftId,
     this.state,

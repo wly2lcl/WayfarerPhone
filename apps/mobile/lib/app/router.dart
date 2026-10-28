@@ -5,6 +5,7 @@ import '../features/draw/draw_page.dart';
 import '../features/library/runs_library_page.dart';
 import '../features/play/play_page.dart';
 import '../features/settings/settings_page.dart';
+import '../features/worlds/manage_page.dart';
 import '../features/worlds/world_detail_page.dart';
 import '../features/worlds/worlds_page.dart';
 import '../features/workshop/create_page.dart';
@@ -52,6 +53,10 @@ final GoRouter appRouter = GoRouter(
       path: '/world/:id',
       builder: (context, state) =>
           WorldDetailPage(worldId: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/manage',
+      builder: (context, state) => const ManagePage(),
     ),
     GoRoute(
       path: '/draw/:worldId',

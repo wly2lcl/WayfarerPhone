@@ -45,6 +45,11 @@ class _BootstrapAppState extends State<BootstrapApp> {
       final dbPath = '${docs.path}/wayfarer.db';
       final keyStore = SecureKeyStore();
 
+      // 导出的 .world/.run 包放应用外部专属目录：文件管理器可浏览、可分享，
+      // 私有 docs 目录对文件 App 不可见
+      final ext = await getExternalStorageDirectory();
+      final filesDir = ext?.path ?? docs.path;
+
       final bibleRaw =
           await rootBundle.loadString('assets/seed/cangwu/bible.json');
       final identitiesRaw =
@@ -70,6 +75,7 @@ class _BootstrapAppState extends State<BootstrapApp> {
         dbPath: dbPath,
         keyStore: keyStore,
         builtinSeed: seed,
+        filesDir: filesDir,
       );
       if (!mounted) return;
       setState(() => _engine = engine);

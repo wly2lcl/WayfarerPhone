@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:contracts/contracts.dart';
@@ -7,6 +8,7 @@ import 'package:drift/drift.dart';
 import 'data/app_db.dart';
 import 'data/runs_dao.dart';
 import 'errors.dart';
+import 'library/library_service.dart';
 import 'llm/gateway.dart';
 import 'llm/settings.dart';
 import 'prompts/roles.dart';
@@ -58,6 +60,9 @@ class WorldSummary {
   final int version;
   final int identityCount;
   final int updatedAt;
+
+  /// 可否导出 .world（导入来源恒为 false，UI 据此隐藏导出入口）
+  final bool exportable;
   WorldSummary({
     required this.id,
     required this.title,
@@ -67,6 +72,7 @@ class WorldSummary {
     required this.version,
     required this.identityCount,
     required this.updatedAt,
+    required this.exportable,
   });
 }
 
@@ -137,13 +143,14 @@ class Engine {
   late final TurnEngine turns;
   late final WorldDraftService drafts;
   late final ImportService imports;
+  late final LibraryService library;
   final SerialQueue _queue = SerialQueue();
   final Map<String, (List<Identity>, int)> _drawTokens = {};
   final Random random;
   final _SettingsHolder _holder;
 
   Engine._(this.db, this.gateway, this.keyStore, this._holder,
-      {Random? random})
+      {required String filesDir, Random? random})
       : random = random ?? Random.secure() {
     turns = TurnEngine(db: db, gateway: gateway, queue: _queue, random: random);
     drafts = WorldDraftService(
@@ -159,6 +166,13 @@ class Engine {
       drafts: drafts,
       random: this.random,
     );
+    library = LibraryService(
+      db: db,
+      exportsDir: Directory('$filesDir/exports'),
+      worldsDir: Directory('$filesDir/worlds'),
+      importsDir: Directory('$filesDir/imports'),
+      random: this.random,
+    );
   }
 
   static Future<Engine> open({
@@ -168,6 +182,7 @@ class Engine {
     void Function(UsageRecord)? onUsage,
     Random? random,
     ModelGateway Function(GatewayConfig config)? gatewayFactory,
+    String? filesDir,
   }) async {
     final db = openDbAt(dbPath);
     final rawSettings = await _readSetting(db, 'model_settings');
@@ -179,11 +194,18 @@ class Engine {
       keyStore: keyStore,
       onUsage: sink,
     ));
-    final engine = Engine._(db, gateway, keyStore, holder, random: random);
+    final dir = filesDir ?? _dirname(dbPath);
+    final engine = Engine._(db, gateway, keyStore, holder,
+        filesDir: dir, random: random);
     if (builtinSeed != null) {
       await engine._installSeed(builtinSeed);
     }
     return engine;
+  }
+
+  static String _dirname(String path) {
+    final i = path.lastIndexOf('/');
+    return i <= 0 ? '.' : path.substring(0, i);
   }
 
   /// 用量先落 usage_log（API 参考 §5.4，仅本地），再交给调用方回调
@@ -278,7 +300,14 @@ class Engine {
     final existing = await (db.select(db.worlds)
           ..where((w) => w.id.equals('w_cangwu')))
         .getSingleOrNull();
-    if (existing != null) return;
+    if (existing != null) {
+      // 存量修正：内置世界随 App 分发，不可导出 .world（世界分享与UGC §2）
+      if (existing.source == 'builtin' && existing.exportable) {
+        await (db.update(db.worlds)..where((w) => w.id.equals('w_cangwu')))
+            .write(const WorldsCompanion(exportable: Value(false)));
+      }
+      return;
+    }
     final now = DateTime.now().millisecondsSinceEpoch;
     final checksum = seed.checksum;
     await db.transaction(() async {
@@ -288,6 +317,7 @@ class Engine {
             genre: seed.bible.meta.genre,
             summary: Value(seed.bible.meta.summary),
             source: 'builtin',
+            exportable: const Value(false),
             createdAt: now,
             updatedAt: now,
           ));
@@ -328,6 +358,7 @@ class Engine {
         version: latest?.version ?? 0,
         identityCount: count,
         updatedAt: w.updatedAt,
+        exportable: w.exportable,
       ));
     }
     return result;
@@ -529,6 +560,9 @@ class Engine {
           ..orderBy([(r) => OrderingTerm.desc(r.updatedAt)]))
         .get();
     final versions = await db.select(db.worldVersions).get();
+    final exportables = <String, bool>{
+      for (final w in await db.select(db.worlds).get()) w.id: w.exportable,
+    };
     final bibles = <String, WorldBible?>{};
     WorldBible? bibleOf(String worldId, int version) {
       final key = '$worldId@$version';
@@ -567,6 +601,7 @@ class Engine {
               headSnapshotId: r.headSnapshotId,
               endingId: r.endingId,
               endingTitle: titleOf(r.worldId, r.worldVersion, r.endingId),
+              exportable: exportables[r.worldId] ?? true,
             ))
         .toList();
   }
@@ -689,6 +724,14 @@ class Engine {
   Future<void> deleteRun(String runId) async {
     await (db.delete(db.runs)..where((r) => r.id.equals(runId))).go();
   }
+
+  // ---- library / 存档包（M3，世界分享与UGC §9）----
+
+  /// `.run` 存档包导出到 files/exports/（绑定世界 exportable = 0 时 EXPORT_FORBIDDEN）
+  Future<ExportedFile> exportRunPack(String runId) => library.exportRunPack(runId);
+
+  /// 导入 `.run` 存档包落地为本机新局；缺对应世界版本 NOT_FOUND，runId 冲突自动改后缀
+  Future<RunImportResult> importRunPack(String path) => library.importRunPack(path);
 
   // ---- assistant ----
 

@@ -1,22 +1,75 @@
 import 'package:engine/engine.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../app/providers.dart';
+import '../../core/engine_errors.dart';
 import '../../core/ui/paper.dart';
 import '../worlds/worlds_provider.dart';
 
-/// 「我的局」：本地局列表，可继续游玩或查看人生档案
+/// 「我的局」：本地局列表，可继续游玩、查看人生档案、导出/导入存档包
 /// autoDispose：分叉/新开局后重进页面时重新查询，避免旧列表缓存
 final runsLibraryProvider =
     FutureProvider.autoDispose((ref) => ref.watch(engineProvider).listRuns());
 
-class RunsLibraryPage extends ConsumerWidget {
+class RunsLibraryPage extends ConsumerStatefulWidget {
   const RunsLibraryPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<RunsLibraryPage> createState() => _RunsLibraryPageState();
+}
+
+class _RunsLibraryPageState extends ConsumerState<RunsLibraryPage> {
+  bool _importing = false;
+
+  Future<void> _exportRun(RunHead run) async {
+    final engine = ref.read(engineProvider);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final out = await engine.exportRunPack(run.id);
+      await SharePlus.instance.share(ShareParams(
+        files: [XFile(out.path, name: out.fileName)],
+        title: out.fileName,
+      ));
+    } on EngineException catch (e) {
+      messenger.showSnackBar(
+          SnackBar(content: Text('${engineCodeLabel(e.code)}：${e.message}')));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('分享失败：$e')));
+    }
+  }
+
+  Future<void> _importRun() async {
+    if (_importing) return;
+    final file = await openFile(
+      acceptedTypeGroups: const [
+        XTypeGroup(label: 'Wayfarer 存档包', extensions: ['run']),
+      ],
+    );
+    if (file == null || !mounted) return;
+    setState(() => _importing = true);
+    final engine = ref.read(engineProvider);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final r = await engine.importRunPack(file.path);
+      messenger.showSnackBar(SnackBar(
+          content: Text(r.renamed
+              ? '导入成功（本机已有同编号存档，已保存为 ${r.runId}）'
+              : '导入成功')));
+      ref.invalidate(runsLibraryProvider);
+    } on EngineException catch (e) {
+      messenger.showSnackBar(
+          SnackBar(content: Text('${engineCodeLabel(e.code)}：${e.message}')));
+    } finally {
+      if (mounted) setState(() => _importing = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final runs = ref.watch(runsLibraryProvider);
     final worlds = ref.watch(worldsProvider).value ?? const <WorldSummary>[];
 
@@ -28,7 +81,21 @@ class RunsLibraryPage extends ConsumerWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('我的局')),
+      appBar: AppBar(
+        title: const Text('我的局'),
+        actions: <Widget>[
+          IconButton(
+            icon: _importing
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.file_download_outlined),
+            tooltip: '导入存档包',
+            onPressed: _importing ? null : _importRun,
+          ),
+        ],
+      ),
       body: runs.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, st) => Center(
@@ -110,6 +177,11 @@ class RunsLibraryPage extends ConsumerWidget {
                               ],
                             ),
                           ),
+                          if (!run.isTrial && run.exportable)
+                            TextButton(
+                              onPressed: () => _exportRun(run),
+                              child: const Text('导出'),
+                            ),
                           if (!ended)
                             TextButton(
                               onPressed: () => context.push('/play/${run.id}'),
