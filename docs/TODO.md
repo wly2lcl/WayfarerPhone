@@ -316,6 +316,13 @@
   验收：缺对应 `worldId + worldVersion` 时拒绝且不留半成品；可续玩到原进度
   证据：引擎单测——缺世界版本 `NOT_FOUND` 不落库、runId 冲突自动改后缀 `r_e811_2`（`renamed=true`）；真机——导入 `m3_run.run` snackbar「导入成功（本机已有同编号存档，已保存为 r_e811_2）」，我的局 3→4 行且同名局并列，点「继续」进入游玩页恢复原进度（第 1 卷·炼气，属性条/序章正文/选项/输入框完整）
 
+M3 遗留（验收证据已尽环境所能，以下为未覆盖项，复核时机已注明）：
+
+1. **跨设备走查未做**：分享文档 §10 条 5/条 7 的「另一台设备」——BlueStacks 无接收分享的应用，以同机回环（导出 → adb pull → 重导 → 试玩/续玩）替代验证；**上真手机后补一次 A→B 实测**（发版前手工回归清单 §13 第 11–13 项已含）
+2. **飞行模式专项未单独实测**（§10 条 6）：导入/导出/删除/游玩链路除模型请求外无网络调用（架构离线），但未做关网专项；M0 已验证飞行模式读档，可在真机走查时一并补
+
+原遗留 3「builtin 世界的 `.run` 不可导出」已于 2026-10-28 定案**开放豁免**并落地（引擎门禁改「非 import 来源即可导出」+ 单测 + 真机验证），决策移入 README「已定决策」。
+
 ---
 
 ## 5. 上线前（合规与商店）
@@ -344,9 +351,14 @@
 
 ---
 
-## 6. 待决策（不阻塞 M0）
+## 6. 待决策（不阻塞里程碑推进）
 
-当前无待决策事项；原八项已定案，结论见[README](../README.md) 的「已定决策」。新增待决项在此登记后，定案时转成正式任务。
+当前无未决事项。原「builtin 世界的存档是否开放 `.run` 导出」已于 2026-10-28 定案：**开放**（`.run` 可导出口径 = 绑定世界非 `import` 来源；builtin 豁免、`import` 仍禁止），已落地为 WF-M3-04-03，结论见[README 的「已定决策」](../README.md)。新增待决项在[README 的「尚未决定」](../README.md)登记后，定案时转成正式任务。
+
+- [x] **WF-M3-04-03 builtin 世界存档 `.run` 导出豁免（2026-10-28 定案落地）**
+  产出：`exportRunPack` 门禁从「世界 `exportable`」改为「世界来源非 `import`」（builtin 豁免、`import` 仍 `EXPORT_FORBIDDEN`）；`RunHead.exportable` 语义同步为「该局存档包可导出」（`listRuns` 按来源计算，UI「我的局」导出按钮自动跟随）；`.world` 导出门禁不变（builtin 仍不可导出）
+  验收：builtin 世界存档可导出且往返导入可续玩；import 世界存档与 `.world` 导出均仍被拒；试玩局仍拒绝
+  证据：引擎单测 161/161（新增「builtin 存档豁免开放 + `.world` 仍拒 + `RunHead.exportable=true` + 往返导入续玩」回归，含 import 来源 `exportable=false` 断言）；真机（BlueStacks）——新构建后 5 局（3 builtin 苍梧 + 2 created）「我的局」均现导出按钮，两侧点「导出」均触发系统分享面板、无 `EXPORT_FORBIDDEN` 提示；导出→重导往返因私有 exports 目录 root 不可读，改以「引擎本地构造合法 builtin 局包 push 到 Download → App 内 SAF 导入成功 → 新局续玩原进度（turnNo 5、状态条、序章正常）」替代验证；import 世界存档无真机样本，其无导出入口由单测 `exportable=false` 覆盖。文档同步：README 已定决策/尚未决定、世界分享与UGC §3.1/§9/§10 v0.5、API参考、测试与验收
 
 ---
 
@@ -366,6 +378,8 @@
 
 | 日期 | 变更 |
 | --- | --- |
+| 2026-10-28 | **builtin 世界存档 `.run` 导出豁免定案落地（WF-M3-04-03）**：`exportRunPack` 门禁改「非 import 来源即可导出」，`RunHead.exportable` 语义同步（UI 导出按钮自动跟随），`.world` 门禁不变；引擎 161/161 单测 + flutter analyze 清洁；真机（BlueStacks）builtin/import 两侧「我的局」导出按钮与分享面板触发验证通过，导出→重导往返以本地构造合法 builtin 局包 SAF 导入续玩替代验证（私有 exports 目录 root 不可读），import 世界无导出入口由单测覆盖；README（已定决策 + 尚未决定清空）、世界分享与UGC v0.5（§3.1 硬规则/§9/§10）、API参考、测试与验收同步；M3 遗留 3 与 §6 待决策收口 |
+| 2026-10-27 | M3 缺口登记：M3 节末新增「遗留与注记」三项（跨设备 A→B 走查留待真机、飞行模式专项未单独执行、builtin `.run` 导出豁免待决策）；builtin 豁免问题登记 README「尚未决定」（含影响与定案时机），§6 待决策同步；世界分享与UGC §10 补复核注记，测试与验收 M3 执行记录注记扩至三项 |
 | 2026-10-27 | M3 分享闭环全部勾选（引擎 160/160 单测 + flutter analyze 清洁 + BlueStacks 真机全链路）：`.world`/`.run` 打包解包（store 模式规避 archive 3.6.1 CRC 兼容问题，`_assertStandardZip` 防回归）、`library.export/import/rename/delete/space` + `runs.exportPack/importPack`、可导出性门禁（builtin/imported 世界 `exportable=0` → `EXPORT_FORBIDDEN`，试玩局拒绝导出，`WorldSummary`/`RunHead.exportable` 驱动 UI 隐藏入口，含 builtin 存量库幂等修正）、世界导入五分支 + 标题去重、runId 冲突改后缀、人生卡片纯文本导出；真机验证——导出→python CRC/checksum 校验、导入 skipped/created/篡改拒收三分支、shared 再导出保留原 NOTICE/`sourceWorldId`、`.run` 往返 + 冲突改写 + 续玩原进度、人生卡片分享面板触发；环境注记：BlueStacks 无接收分享的应用，「文件 App 可见」以 adb pull + 目录浏览替代验证。文档 v0.7（API参考）/ v0.4（世界分享与UGC）同步 |
 | 2026-10-27 | 主玩法三轮打磨（二项）：①代填形状验收 `_qualifiedFill`——跳过代填返回非空 map 但缺键/空表（形状漂移）致 `scoreField` 0 分时退回静态兜底，修真机「AI·基调 0」红章；事件种子 0（无 AI 代填角标）属未答字段如实显示非缺陷（completeness 门禁 70% 放行）；引擎补形状漂移单测 132/132；②徽章 `loadBible` 分支真机验证收口——对话共创世界（未法残局）冻结入书架（w_mvq06got_4u 第 1 版）→ 正式局身份抽取（末法孤儿）→ 序章「陈掌柜 · 相识」，试玩 `draft_` 分支 + 正式局分支双分支齐备 |
 | 2026-10-26 | 主玩法二轮打磨（三项）：①状态条关系/声望徽章按圣经映射显示名（修真机暴露的 laozhou 裸 id，试玩局走 `draft_` 草稿分支取圣经，取不到回退 id）；②快速档导入端到端真机验证收口（新文件变体防 dedupe：选档→·快速→失败续跑→12/12 采纳→100 分→试玩，三档验证齐备）；③对话共创入口 `_ensureFactionBases` 后真机回归（八字段全跳过 AI 代填→生成→100 分六项全过无 `FACTION_NO_BASE`→试玩序章「周缇领 · 敌意」）。flutter analyze 清洁；引擎 131/131 |

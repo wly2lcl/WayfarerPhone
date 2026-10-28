@@ -19,7 +19,9 @@ class RunHead {
   /// 仅 listRuns 填充：按世界版本 bible 解析出的终局名（展示用）
   final String? endingTitle;
 
-  /// 绑定世界的可导出性（false 时 .run 不可导出，UI 隐藏导出入口）
+  /// 该局 `.run` 存档包可导出（false 时 UI 隐藏导出入口）。
+  /// 口径：绑定世界非 import 来源（世界分享与UGC §4）——builtin 世界 `.world`
+  /// 不可导出但其存档豁免开放，import 来源仍禁止
   final bool exportable;
   final bool isTrial;
   final String? draftId;

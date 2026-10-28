@@ -1,10 +1,12 @@
 # API 参考 · 本地引擎与模型网关
 
-> 版本：v0.7（单机离线）
-> 最后更新：2026-10-27
+> 版本：v0.8（单机离线）
+> 最后更新：2026-10-28
 > 上游：[技术方案](./技术方案.md) ｜ 相关：[Prompt 契约](./Prompt契约.md)
 >
 > v0.7 变更：M3 分享闭环落地——§3 `library.*()`（export/import/rename/delete/space）与 `runs.exportPack/importPack` 由「未实现」改为已实现语义：可导出性门禁（builtin/imported 世界 `exportable=0` → `EXPORT_FORBIDDEN`，试玩局不可导出）、`WorldSummary`/`RunHead` 增 `exportable`（客户端据此隐藏导出入口）、`formatVersion` 兼容检查、runId 冲突自动改后缀、导入五分支。
+>
+> v0.8 变更：builtin 世界存档 `.run` 导出豁免定案——`runs.exportPack` 门禁改为「绑定世界非 `import` 来源即可导出」（builtin 豁免、`import` 仍拒），`RunHead.exportable` 语义改为「该局 `.run` 存档包可导出」；`library.export`（`.world`）门禁不变。
 >
 > v0.4 变更：M1 世界工坊接口落地——新增 `drafts.*()` 门面定义与错误码语义；`runs.list()` 标注不含试玩局。
 >
@@ -57,7 +59,7 @@ class EngineException implements Exception {
 | `STORAGE_FULL` | 本地磁盘不足 | 提示清理旧局或导出 |
 | `IMPORT_INVALID` | `.world` / `.run` 包结构、校验和或格式版本不通过；TXT 导入中文件不存在 / 编码无法识别 / 内容与任务记录不一致 | 展示具体原因 |
 | `IMPORT_TOO_LARGE` | 超过 20 MB 或解压后超限（TXT 导入与包导入同一上限） | 拒绝 |
-| `EXPORT_FORBIDDEN` | 该世界 `exportable = 0`，或所属世界不可导出导致该局 `.run` 不可导出 | 说明为导入来源，不可导出 |
+| `EXPORT_FORBIDDEN` | `.world`：该世界 `exportable = 0`；`.run`：所属世界为 `import` 来源（builtin 存档豁免开放） | 说明为导入来源，`.world` 不可导出 |
 | `DRAFT_INCOMPLETE` | 草稿完整度不足，不可生成或冻结 | 展示缺失字段，回到访谈 |
 | `QUALITY_GATE_FAILED` | 一致性检查存在 `error` 级问题 | 打开编辑器定位问题项 |
 | `WORLD_FROZEN` | 已冻结版本不可修改；内容未变时重复冻结同样报此码 | 提示已是最新冻结版本；修改内容后再冻结出新版本 |
@@ -278,8 +280,8 @@ final pack = await engine.exportRunPack('r_e811');        // .run 存档包导�
 final imp = await engine.importRunPack(path);             // RunImportResult(runId, renamed)
 ```
 
-- **可导出性门禁**：`library.export` 与 `runs.exportPack` 均校验 `worlds.exportable`；`exportable = 0`（builtin 内置 / imported 小说导入世界）抛 `EXPORT_FORBIDDEN`。试玩局（`is_trial = 1`）导出存档包抛 `STATE_INVALID`（「试玩局不可导出」）。`.run` 可导出性跟随所属世界（世界分享与UGC §4）
-- **导出入口**：客户端据 `WorldSummary.exportable` / `RunHead.exportable` 隐藏导出菜单与按钮（不导出的世界连入口都不可见）；导出文件经系统分享面板发出
+- **可导出性门禁**：`library.export`（`.world`）校验 `worlds.exportable`，`exportable = 0`（builtin 内置 / imported 小说导入世界）抛 `EXPORT_FORBIDDEN`。`runs.exportPack`（`.run`）口径独立：绑定世界为 `import` 来源时 `EXPORT_FORBIDDEN`，**builtin 世界存档豁免开放**（2026-10-28 定案，接收方装 App 自带该世界版本；世界分享与UGC §3.1）。试玩局（`is_trial = 1`）导出存档包抛 `STATE_INVALID`（「试玩局不可导出」）
+- **导出入口**：客户端据 `WorldSummary.exportable` 隐藏 `.world` 导出菜单；`RunHead.exportable` 语义为「该局 `.run` 存档包可导出」（按世界来源非 `import` 计算），「我的局」据此显示/隐藏导出按钮；导出文件经系统分享面板发出
 - **导入校验**（`WorldPackage.unpack` / `RunPackage.unpack`）：20 MB 上限（`IMPORT_TOO_LARGE`）、zip 解析失败与缺文件（`IMPORT_INVALID` 具体到字段）、`formatVersion` 高于/低于本机支持值均拒绝、`manifest.aiGenerated != true` 拒绝（AI 生成标识不可关闭）、checksum 不匹配拒绝（`CHECKSUM_MISMATCH`，篡改任意字节后导入被拒）
 - **世界导入冲突处理**（世界分享与UGC §6）：同 worldId 同版本 checksum 相同 → `skipped`；同版本 checksum 不同 → 默认 `skipped`，`overwrite: true` 时 `overwritten`（删除旧版本行后重插）；更高版本 → `version_added`（追加并推进 latestVersion）；更低版本 → `saved_as_new`（新 worldId 另存，不降级已有版本）；无同名世界 → `created`。标题与已有世界同名时追加「（导入 N）」去重（`_dedupeTitle`）
 - **存档包导入**：缺对应 `worldId + worldVersion` 时 `NOT_FOUND` 拒收，不留半成品；runId 冲突自动改后缀（`r_e811` → `r_e811_2`，`renamed = true`）；导入后从原 `turnNo` 与最新快照续玩
@@ -425,5 +427,6 @@ class TurnError        extends TurnEvent { final EngineCode code; final String m
 | 2026-10-23 | v0.3：新增三种模型协议适配、供应商预设、`.run` 存档包导入导出 |
 | 2026-10-24 | v0.4：M1 世界工坊接口——§2/§3 新增 `drafts.*()`（create/interview/generate/detail/save/trial/discardTrial/freeze/delete），`DraftView` 与质量门语义；`runs.list()` 标注不含试玩局；`WORLD_FROZEN` 对齐实现（重复冻结同码） |
 | 2026-10-27 | v0.7：M3 分享闭环——§3 `library.*()`（export/import/rename/delete/space）与 `runs.exportPack/importPack` 已实现语义：exportable 门禁（builtin/imported 世界 `EXPORT_FORBIDDEN`、试玩局 `STATE_INVALID`）、`WorldSummary`/`RunHead` 增 `exportable`、`formatVersion`/`aiGenerated`/checksum 导入校验、世界导入五分支与 `.run` runId 冲突改后缀；`runs.exportPack/importPack` 门面方法为 `Engine.exportRunPack/importRunPack` |
+| 2026-10-28 | v0.8：builtin 世界存档 `.run` 导出豁免定案——`runs.exportPack` 门禁改为「绑定世界非 `import` 来源即可导出」（builtin 豁免、`import` 仍 `EXPORT_FORBIDDEN`），`RunHead.exportable` 语义改为「该局 `.run` 存档包可导出」（`listRuns` 按世界来源计算）；`library.export`（`.world`）门禁不变；`EXPORT_FORBIDDEN` 错误码说明分流 `.world`/`.run` 两个口径 |
 | 2026-10-25 | v0.5：M2 小说导入接口——§2/§3 新增 `imports.*()`（start/resume/progress/listJobs/entities/updateEntities/regenerate），ImportJobView 阶段机、start 去重续跑、覆盖率闸门与实体审阅边界；`IMPORT_INVALID`/`IMPORT_TOO_LARGE` 错误码含义扩展到 TXT 导入；library.export/import 标注 M3 |
 | 2026-10-26 | v0.6：合成档位——`imports.start(path, {fidelity})` / `imports.regenerate(jobId, {fidelity})` 带 `ImportFidelity`（fast/standard/faithful，默认 fast）；阶段机加忠实档 `compressing`（压缩失败自动降级标准采样）；start 去重进行中集合加 compressing；ImportJobView 增 `fidelity` 字段 |

@@ -604,7 +604,7 @@ void main() {
       expect(head['memory'], '第一卷记');
     });
 
-    test('exportRunPack：试玩局拒绝；importable=0 世界 EXPORT_FORBIDDEN', () async {
+    test('exportRunPack：试玩局拒绝；import 来源世界 EXPORT_FORBIDDEN 且 RunHead.exportable=false', () async {
       final (db, s, _) = await _service();
       await _seedWorld(db);
       final trialId = await _makeRun(db, trial: true);
@@ -612,6 +612,50 @@ void main() {
       await _seedWorld(db, id: 'w_imp', exportable: false, source: 'import');
       final impRun = await _makeRun(db, worldId: 'w_imp');
       expect(() => s.exportRunPack(impRun), throwsA(_code(EngineCode.exportForbidden)));
+      // listRuns 的存档包可导出标志按来源计算：import → false（UI 隐藏按钮）
+      final tmp = await Directory.systemTemp.createTemp('wayfarer_listruns_imp');
+      final e = await Engine.open(
+        dbPath: '${tmp.path}/app.db',
+        keyStore: InMemoryKeyStore(),
+        filesDir: tmp.path,
+      );
+      await _seedWorld(e.db, id: 'w_imp', exportable: false, source: 'import');
+      await _makeRun(e.db, worldId: 'w_imp');
+      final heads = await e.listRuns();
+      expect(heads.single.exportable, isFalse);
+      await e.close();
+    });
+
+    test('exportRunPack：builtin 世界存档豁免开放（.world 仍不可导出），往返导入可续玩', () async {
+      final (db, s, root) = await _service();
+      await _seedWorld(db, id: 'w_cangwu', source: 'builtin', exportable: false);
+      // `.world` 门禁不受豁免影响
+      expect(() => s.export('w_cangwu'), throwsA(_code(EngineCode.exportForbidden)));
+      final runId = await _makeRun(db, worldId: 'w_cangwu');
+      // RunHead.exportable = 非 import 来源 → true（UI 显示导出按钮）
+      final tmp = await Directory.systemTemp.createTemp('wayfarer_listruns');
+      final e = await Engine.open(
+        dbPath: '${tmp.path}/app.db',
+        keyStore: InMemoryKeyStore(),
+        filesDir: tmp.path,
+      );
+      await _seedWorld(e.db, id: 'w_cangwu', source: 'builtin', exportable: false);
+      await _makeRun(e.db, worldId: 'w_cangwu');
+      final heads = await e.listRuns();
+      expect(heads.single.exportable, isTrue);
+      await e.close();
+
+      final out = await s.exportRunPack(runId);
+      expect(out.fileName, 'wayfarer-run-$runId-t5.run');
+      // 模拟另一台设备（自带 builtin 世界，无存档）导入续玩
+      await (db.delete(db.runEvents)..where((e) => e.runId.equals(runId))).go();
+      await (db.delete(db.runSnapshots)..where((sn) => sn.runId.equals(runId))).go();
+      await (db.delete(db.runs)..where((r) => r.id.equals(runId))).go();
+      final r = await s.importRunPack(out.path);
+      expect(r.renamed, isFalse);
+      final head = await (db.select(db.runs)..where((x) => x.id.equals(r.runId))).getSingle();
+      expect(head.turnNo, 5);
+      expect(await RunsDao(db).nextSeq(r.runId), 6);
     });
 
     test('importRunPack：落地新局、进度一致、可续玩到原进度再推进', () async {

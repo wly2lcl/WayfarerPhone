@@ -115,7 +115,7 @@ type RunPackageManifest = {
 - 导入前先校验 `checksum`，再校验本机是否存在 `worldId + worldVersion`；缺世界时拒绝导入，提示先导入对应 `.world`，**不允许自动升级到新版本**。
 - 导入落地为新 `runId`，与本地已有局并列；`runId` 冲突时自动改后缀，不覆盖。
 - `.run` 不含模型 Key、不含导入原文、不含 `usage_log` 明细。
-- 所绑定世界 `exportable = 0` 时，该局的 `.run` 同样不可导出（保持与导入来源世界的版权口径一致）。
+- `.run` 可导出口径**独立于 `.world`**（2026-10-28 定案，README「已定决策」）：绑定世界非 `import` 来源即可导出。builtin 世界 `.world` 不可导出（随 App 分发无再分享意义），但其存档豁免开放——接收方装 App 自带该世界版本，`.run` 迁移即跨设备续玩；`import`（小说导入）世界的存档仍不可导出（版权硬约束，原文不出现在任何导出路径）。
 - 导入后 `runs.status` 保持原值；已结束的局只可查看人生档案。
 
 ---
@@ -223,7 +223,7 @@ files/exports/wayfarer-world-<worldId>-v<version>.world   导出后交给系统�
 | `library.rename(worldId, title)` | 重命名（只改 `worlds.title`） |
 | `library.delete(worldId)` | 级联删除版本、全部存档与导入原件，返回删除局数 |
 | `library.space()` | 按世界统计 `files/worlds/<id>/` 占用 + `files/imports/` 导入原文缓存 |
-| `runs.exportPack(runId)` | 导出 `.run` 存档包到 `files/exports/` 并调起分享面板；试玩局拒绝、绑定世界 `exportable = 0` 时 `EXPORT_FORBIDDEN` |
+| `runs.exportPack(runId)` | 导出 `.run` 存档包到 `files/exports/` 并调起分享面板；试玩局拒绝、绑定世界为 `import` 来源时 `EXPORT_FORBIDDEN`（builtin 存档豁免开放，§3.1） |
 | `runs.importPack(file)` | 校验并导入 `.run`，落地为本机新局；runId 冲突自动改后缀（`r_xxx_2`） |
 | `WorldDraftService.freeze(draftId)` | 冻结为本地版本，见[世界创造与导入](./世界创造与导入.md) §6 |
 
@@ -235,7 +235,7 @@ files/exports/wayfarer-world-<worldId>-v<version>.world   导出后交给系统�
 | --- | --- |
 | `IMPORT_INVALID` | 包格式版本不兼容、校验和不匹配、缺文件或 AI 标识缺失 |
 | `IMPORT_TOO_LARGE` | 超过 20 MB 或解压后超限 |
-| `EXPORT_FORBIDDEN` | 该世界 `exportable = 0`，或所属世界不可导出导致该局 `.run` 不可导出 |
+| `EXPORT_FORBIDDEN` | `.world`：该世界 `exportable = 0`；`.run`：所属世界为 `import` 来源（builtin 存档已豁免） |
 | `WORLD_FROZEN` | 已冻结版本不可修改 |
 | `NOT_FOUND` | `.run` 绑定的 `worldId + worldVersion` 在本机不存在 |
 
@@ -251,12 +251,15 @@ files/exports/wayfarer-world-<worldId>-v<version>.world   导出后交给系统�
 6. 飞行模式下可完成导入、导出、删除与游玩，除模型请求外无网络依赖
 7. `.run` 存档包可在另一台设备导入并续玩；缺对应世界版本时拒绝导入且不留下半成品
 
+> **复核注记（2026-10-27，M3 验收执行情况）**：条 1–4 已单测 + 真机验证通过。条 5/7 的「另一台设备」受验证环境限制（BlueStacks 无接收分享的应用）以**同机回环**替代（导出 → adb pull → 重导 → 试玩/续玩，NOTICE 与 checksum 经 python 校验完整），上真手机后需补 A→B 实测。条 6 的关网专项未单独执行（导入/导出/删除链路除模型请求外无网络调用，M0 已验证飞行模式读档）。builtin 世界存档 `.run` 导出豁免已于 2026-10-28 定案并落地（§3.1，单测 + 真机验证），原「是否开放豁免」待决策项移入 README「已定决策」。
+
 ---
 
 ## 变更记录
 
 | 日期 | 版本 | 变更 |
 | --- | --- | --- |
+| 2026-10-28 | v0.5 | **builtin 世界存档 `.run` 导出豁免定案落地**：§3.1 硬规则改为「`.run` 可导出口径独立于 `.world`——绑定世界非 `import` 来源即可导出」，builtin 存档开放（接收方自带该世界）、`import` 存档仍禁止；§9 `runs.exportPack` 门禁与 `EXPORT_FORBIDDEN` 错误码说明同步；§10 复核注记收口。README「尚未决定」移入「已定决策」 |
 | 2026-10-27 | v0.4 | M3 分享闭环落地并真机验证：§9 引擎动作全部实现（`library.space()` 补入表格）；人生卡片实现为纯文本（§1 更新，M3 任务允许图片或纯文本二选一）；实现决策注记——①zip 条目采用 store（不压缩）模式规避 archive 3.6.1 与 python zipfile 的 CRC 兼容问题并加标准 zip 回归单测；②builtin 内置世界 `exportable` 修正为 0（§2 口径「builtin 不可导出」，含存量库幂等修正），`.run` 导出联动拒绝（§4）；③再导出 shared 包保留原 NOTICE 与 `sourceWorldId`、`origin='shared'` 真机验证通过 |
 | 2026-10-23 | v0.2 | 由云架构改为单机离线，去掉账号/服务端/社区/审核后台 |
 | 2026-10-23 | v0.3 | 新增 §3.1 `.run` 存档包格式与导入规则；引擎动作补 `runs.exportPack` / `runs.importPack`；验收补存档迁移 |

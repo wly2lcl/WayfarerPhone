@@ -244,6 +244,9 @@ class LibraryService {
 
   // ---- .run 存档包导出（WF-M3-04-01）----
 
+  /// 存档包可导出口径：绑定世界非 import 来源（世界分享与UGC §4）。
+  /// builtin 世界随 App 分发、`.world` 不可导出，但其存档 `.run` 豁免开放（跨设备续玩）；
+  /// 导入来源（source = import）世界仍 EXPORT_FORBIDDEN。
   Future<ExportedFile> exportRunPack(String runId) async {
     final r = await (db.select(db.runs)..where((x) => x.id.equals(runId))).getSingleOrNull();
     if (r == null) throw EngineException(EngineCode.notFound, '局不存在');
@@ -251,8 +254,8 @@ class LibraryService {
       throw EngineException(EngineCode.stateInvalid, '试玩局不可导出');
     }
     final w = await _world(r.worldId);
-    if (!w.exportable) {
-      throw EngineException(EngineCode.exportForbidden, '该局所属世界不可导出（exportable = 0）');
+    if (w.source == 'import') {
+      throw EngineException(EngineCode.exportForbidden, '导入来源世界的存档不可导出（版权约束）');
     }
     final snapshots = await (db.select(db.runSnapshots)
           ..where((s) => s.runId.equals(runId))

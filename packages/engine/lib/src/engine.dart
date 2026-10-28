@@ -560,8 +560,8 @@ class Engine {
           ..orderBy([(r) => OrderingTerm.desc(r.updatedAt)]))
         .get();
     final versions = await db.select(db.worldVersions).get();
-    final exportables = <String, bool>{
-      for (final w in await db.select(db.worlds).get()) w.id: w.exportable,
+    final sources = <String, String>{
+      for (final w in await db.select(db.worlds).get()) w.id: w.source,
     };
     final bibles = <String, WorldBible?>{};
     WorldBible? bibleOf(String worldId, int version) {
@@ -601,7 +601,8 @@ class Engine {
               headSnapshotId: r.headSnapshotId,
               endingId: r.endingId,
               endingTitle: titleOf(r.worldId, r.worldVersion, r.endingId),
-              exportable: exportables[r.worldId] ?? true,
+              // 存档包可导出 = 非 import 来源（builtin 豁免开放，世界分享与UGC §4）
+              exportable: (sources[r.worldId] ?? 'created') != 'import',
             ))
         .toList();
   }
@@ -727,7 +728,8 @@ class Engine {
 
   // ---- library / 存档包（M3，世界分享与UGC §9）----
 
-  /// `.run` 存档包导出到 files/exports/（绑定世界 exportable = 0 时 EXPORT_FORBIDDEN）
+  /// `.run` 存档包导出到 files/exports/（绑定世界为 import 来源时 EXPORT_FORBIDDEN；
+  /// builtin 世界存档豁免开放，世界分享与UGC §4）
   Future<ExportedFile> exportRunPack(String runId) => library.exportRunPack(runId);
 
   /// 导入 `.run` 存档包落地为本机新局；缺对应世界版本 NOT_FOUND，runId 冲突自动改后缀
