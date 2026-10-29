@@ -12,8 +12,9 @@ import '../worlds/worlds_provider.dart';
 
 /// 「我的局」：本地局列表，可继续游玩、查看人生档案、导出/导入存档包
 /// autoDispose：分叉/新开局后重进页面时重新查询，避免旧列表缓存
-final runsLibraryProvider =
-    FutureProvider.autoDispose((ref) => ref.watch(engineProvider).listRuns());
+final runsLibraryProvider = FutureProvider.autoDispose(
+  (ref) => ref.watch(engineProvider).listRuns(),
+);
 
 class RunsLibraryPage extends ConsumerStatefulWidget {
   const RunsLibraryPage({super.key});
@@ -30,13 +31,16 @@ class _RunsLibraryPageState extends ConsumerState<RunsLibraryPage> {
     final messenger = ScaffoldMessenger.of(context);
     try {
       final out = await engine.exportRunPack(run.id);
-      await SharePlus.instance.share(ShareParams(
-        files: [XFile(out.path, name: out.fileName)],
-        title: out.fileName,
-      ));
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(out.path, name: out.fileName)],
+          title: out.fileName,
+        ),
+      );
     } on EngineException catch (e) {
       messenger.showSnackBar(
-          SnackBar(content: Text('${engineCodeLabel(e.code)}：${e.message}')));
+        SnackBar(content: Text('${engineCodeLabel(e.code)}：${e.message}')),
+      );
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('分享失败：$e')));
     }
@@ -55,14 +59,16 @@ class _RunsLibraryPageState extends ConsumerState<RunsLibraryPage> {
     final messenger = ScaffoldMessenger.of(context);
     try {
       final r = await engine.importRunPack(file.path);
-      messenger.showSnackBar(SnackBar(
-          content: Text(r.renamed
-              ? '导入成功（本机已有同编号存档，已保存为 ${r.runId}）'
-              : '导入成功')));
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(r.renamed ? '导入成功（本机已有同编号存档，已保存为 ${r.runId}）' : '导入成功'),
+        ),
+      );
       ref.invalidate(runsLibraryProvider);
     } on EngineException catch (e) {
       messenger.showSnackBar(
-          SnackBar(content: Text('${engineCodeLabel(e.code)}：${e.message}')));
+        SnackBar(content: Text('${engineCodeLabel(e.code)}：${e.message}')),
+      );
     } finally {
       if (mounted) setState(() => _importing = false);
     }
@@ -119,7 +125,8 @@ class _RunsLibraryPageState extends ConsumerState<RunsLibraryPage> {
                   ? const SizedBox(
                       width: 18,
                       height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2))
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                   : const Icon(Icons.file_download_outlined),
               tooltip: '导入存档包',
               onPressed: _importing ? null : _importRun,
@@ -142,15 +149,25 @@ class _RunsLibraryPageState extends ConsumerState<RunsLibraryPage> {
           ),
         ),
         data: (list) => list.isEmpty
-            ? Center(
-                child: Text(
-                  '还没有开始过一局。\n去书架选一个世界，抽一张身份吧。',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
+            ? Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  Text(
+                    '还没有开始过一局。\n去书架选一个世界，抽一张身份吧。',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
                       fontSize: 13,
                       height: 1.8,
-                      color: Theme.of(context).colorScheme.secondary),
-                ),
+                      color: Theme.of(context).colorScheme.secondary,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  FilledButton.icon(
+                    onPressed: () => context.go('/'),
+                    icon: const Icon(Icons.local_library_outlined, size: 18),
+                    label: const Text('去书架'),
+                  ),
+                ],
               )
             : ListView.builder(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
@@ -162,7 +179,9 @@ class _RunsLibraryPageState extends ConsumerState<RunsLibraryPage> {
                     padding: const EdgeInsets.only(bottom: 12),
                     child: PaperCard(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 14),
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                       child: Row(
                         children: <Widget>[
                           Expanded(
@@ -175,8 +194,9 @@ class _RunsLibraryPageState extends ConsumerState<RunsLibraryPage> {
                                       child: Text(
                                         worldTitle(run.worldId),
                                         style: const TextStyle(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w600),
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),
@@ -185,12 +205,12 @@ class _RunsLibraryPageState extends ConsumerState<RunsLibraryPage> {
                                     PaperBadge(
                                       label: ended ? '已落幕' : '进行中',
                                       color: ended
-                                          ? Theme.of(context)
-                                              .colorScheme
-                                              .secondary
-                                          : Theme.of(context)
-                                              .colorScheme
-                                              .primary,
+                                          ? Theme.of(
+                                              context,
+                                            ).colorScheme.secondary
+                                          : Theme.of(
+                                              context,
+                                            ).colorScheme.primary,
                                     ),
                                   ],
                                 ),
@@ -199,10 +219,11 @@ class _RunsLibraryPageState extends ConsumerState<RunsLibraryPage> {
                                   '${run.endingTitle != null ? '${run.endingTitle} · ' : ''}'
                                   '第${run.chapter}卷 · 第${run.turnNo}回合 · v${run.worldVersion} 世界',
                                   style: TextStyle(
-                                      fontSize: 12,
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .secondary),
+                                    fontSize: 12,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.secondary,
+                                  ),
                                 ),
                               ],
                             ),
@@ -220,8 +241,7 @@ class _RunsLibraryPageState extends ConsumerState<RunsLibraryPage> {
                               child: const Text('继续'),
                             ),
                           TextButton(
-                            onPressed: () =>
-                                context.push('/archive/${run.id}'),
+                            onPressed: () => context.push('/archive/${run.id}'),
                             child: const Text('档案'),
                           ),
                           if (ended)

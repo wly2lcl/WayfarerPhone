@@ -1,8 +1,10 @@
 # API 参考 · 本地引擎与模型网关
 
-> 版本：v1.2（单机离线）
+> 版本：v1.3（单机离线）
 > 最后更新：2026-10-29
 > 上游：[技术方案](./技术方案.md) ｜ 相关：[Prompt 契约](./Prompt契约.md)
+>
+> v1.3 变更：`turns.run` 新增**中止语义**（停止生成，B6）——订阅 cancel 即向引擎传播中止，引擎在关键检查点（含 `commitTurn` 前最后防线）静默终止本回合；中止回合不落库、`turnNo` 不变、同一 `expectedTurn` 可重提，已发出请求的用量行保留（详见 §turns.run）。
 >
 > v1.2 变更：数据卫生与重试修复——`runs.delete` 级联清理扩至 `usage_log` 与 `events_fts`（原只删局行，孤儿数据只增不减）；`library.delete` 同口径补 `usage_log`；新增 `settings.purgeExpiredUsageLog()`（90 天滚动，`Engine.open()` 自动执行）；`usageSummary` 试玩排除下推 SQL；`listRuns` 终局标题仅解析已落幕局涉及的世界版本（消除全表解码 bible 的 N+1）；网关重试计时按单次尝试重置（修复第二次尝试被累计耗时误判首字超时），429 `Retry-After` 真正用于退避。
 >
@@ -191,6 +193,8 @@ await for (final event in stream) { ... }
 ```
 
 事件顺序固定：`turnStart → (classification) → narrationDelta* → narrationEnd → (chapterCompleted) → choices → statePatch → turnEnd`；失败则最后是 `turnError`，不与 `turnEnd` 同时出现。`chapterCompleted(chapter, reason, summary)` 仅在卷末收卷回合出现，`summary` 为压缩生成的卷记（可能为空）。
+
+**中止（停止生成）**：订阅方 `cancel()` 订阅即向引擎传播中止信号——引擎在关键检查点（分类前、导演前、旁白 delta 循环内、提取前、**`commitTurn` 之前**（最后防线）、随行问答 delta 循环内）检测并抛内部中止信号，静默终止本回合（不外发 `TurnError`）。中止语义：**本回合不落库**（`turnNo` 不变、无状态补丁、无快照），同一 `expectedTurn` 可直接重新提交（不报 `TURN_CONFLICT`）；**已发出的模型请求不追回**（`usage_log` 用量行保留，属已知取舍）。UI 侧「停止生成」按钮（B6）在 `submitting/streaming` 阶段显示，点击即 `cancel()` 订阅：已流出的半截正文保留（补完整标记），纯空占位连同其回合标题一并丢弃，上一回合的待选选项恢复。
 
 ### branch()
 
@@ -459,6 +463,7 @@ class TurnError        extends TurnEvent { final EngineCode code; final String m
 
 | 日期 | 变更 |
 | --- | --- |
+| 2026-10-29 | v1.3：`turns.run` 中止语义（停止生成，B6）——订阅 cancel 向引擎传播中止（分类/导演/旁白 delta/提取/commitTurn 前/随行问答 delta 六个检查点，`_TurnAborted` 静默终止不外发 `TurnError`）；中止回合不落库、`turnNo` 不变、同一 `expectedTurn` 可重提；UI「停止生成」按钮（submitting/streaming 显示，半截正文保留、空占位连同回合标题丢弃、恢复待选选项） |
 | 2026-10-29 | v1.2：数据卫生与重试修复——`runs.delete` 级联清理扩至 `usage_log`/`events_fts`，`library.delete` 同口径补 `usage_log`；门面清单新增 `settings.purgeExpiredUsageLog`（90 天滚动）；`listRuns` 终局标题仅解析落幕局涉及版本（消除 N+1）；§5.3 重试计时按单次尝试重置、429 `Retry-After` 用于退避；「我的局」新增单局删除按钮（二次确认） |
 | 2026-10-29 | v1.1：AI 标识收口与诊断/护栏补强——门面清单新增 `settings.clearDiagnostics` / `settings.purgeExpiredLocalEvents`，`exportDiagnostics` 注明自动保留最近 5 份；青少年模式护栏补第④项（`assistant` 自由问答拒绝）；游玩页页脚 AI 生成角标（WF-LAUNCH-03 四处齐备） |
 | 2026-10-29 | v1.0：诊断包与未成年人保护——门面清单与新增 §3 节：`settings.readAppSetting/writeAppSetting/isTeenMode/setTeenMode/exportDiagnostics`、`AppFlags` 开关键、青少年模式护栏清单（turns.run 自由输入 / library 四入口 / imports.start 抛 `STATE_INVALID`）、诊断包脱敏清单 |

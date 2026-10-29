@@ -177,6 +177,36 @@ class PlayController extends Notifier<PlayState> {
     await _runTurn(input, _expectedTurn);
   }
 
+  /// 停止当前回合的生成：断开事件流（回合引擎在下一事件点中止，不落库、
+  /// turnNo 不变），保留已流出的正文并回到待选态；可重新提交或重试
+  Future<void> stopGeneration() async {
+    if (!state.busy) return;
+    await _sub?.cancel();
+    _sub = null;
+    var blocks = <NarrationBlock>[...state.blocks];
+    // 已流出的半截正文补完整标记，与「流中断保留正文」口径一致；
+    // 纯空占位连同其回合标题一并丢弃（该回合未发生，不留空壳）
+    if (blocks.isNotEmpty && !blocks.last.complete && !blocks.last.hint) {
+      if (blocks.last.text.isEmpty) {
+        blocks.removeLast();
+        if (blocks.isNotEmpty && blocks.last.hint) {
+          blocks = blocks.sublist(0, blocks.length - 1);
+        }
+      } else {
+        blocks[blocks.length - 1] = blocks.last.completed();
+      }
+    }
+    state = state.copyWith(
+      phase: PlayPhase.idle,
+      blocks: blocks,
+      canRetry: false,
+      errorCode: null,
+      errorMessage: null,
+    );
+    // 上一回合若仍有等待中的选项，恢复之
+    await _restorePendingChoices();
+  }
+
   Future<void> _runTurn(TurnInput input, int expectedTurn) async {
     await _sub?.cancel();
     state = state.clearError().copyWith(phase: PlayPhase.submitting);
@@ -204,12 +234,15 @@ class PlayController extends Notifier<PlayState> {
           // 上次失败尝试留下的半截正文不再保留，避免重试后重复追加
           blocks.removeLast();
         }
-        blocks.add(NarrationBlock(
-          turn: turn,
-          text: '—— 第 $turn 回合 ——',
-          complete: true,
-          hint: true,
-        ));
+        // 同回合标题复用：中止/失败后重提不再叠加「第 N 回合」
+        if (!blocks.any((b) => b.hint && b.turn == turn)) {
+          blocks.add(NarrationBlock(
+            turn: turn,
+            text: '—— 第 $turn 回合 ——',
+            complete: true,
+            hint: true,
+          ));
+        }
         blocks.add(NarrationBlock(turn: turn, text: '', complete: false));
         state = state.copyWith(
           phase: PlayPhase.streaming,

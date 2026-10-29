@@ -33,14 +33,22 @@ class TurnEngine {
     Random? random,
   }) : random = random ?? Random.secure();
 
+  /// 取消传播（停止生成）：订阅方 cancel 后置位 aborted，_doTurn 在各阶段
+  /// 检查（关键点在 commitTurn 之前），中止即整回合不落库、turnNo 不变，
+  /// 同一 expectedTurn 可重新提交。已发生的模型请求不追回（用量行保留）。
   Stream<TurnEvent> run(
     String runId, {
     required int expectedTurn,
     required TurnInput input,
   }) {
-    final controller = StreamController<TurnEvent>();
-    queue.run(runId, () => _doTurn(runId, expectedTurn, input, controller))
+    var aborted = false;
+    final controller = StreamController<TurnEvent>(
+      onCancel: () => aborted = true,
+    );
+    queue.run(
+        runId, () => _doTurn(runId, expectedTurn, input, controller, () => aborted))
         .catchError((Object e, StackTrace st) {
+      if (e is _TurnAborted) return; // 用户主动停止，静默收场
       if (!controller.isClosed) {
         controller.add(TurnError(
           e is EngineException ? e.code.wireName : EngineCode.stateInvalid.wireName,
@@ -57,9 +65,17 @@ class TurnEngine {
     int expectedTurn,
     TurnInput input,
     StreamController<TurnEvent> out,
+    bool Function() aborted,
   ) async {
     void emit(TurnEvent e) {
-      if (!out.isClosed) out.add(e);
+      if (out.isClosed || aborted()) return;
+      out.add(e);
+    }
+
+    // 中止检查：>true 即放弃本回合（不落库、不发后续请求）
+    Future<void> abortIfRequested() async {
+      if (!aborted()) return;
+      throw _TurnAborted();
     }
 
     final head = await RunsDao(db).loadHead(runId);
@@ -150,13 +166,14 @@ class TurnEngine {
       }
       intent = intent.isEmpty ? '推进这件事' : intent;
     } else if (input is FreeTextInput) {
+      await abortIfRequested();
       final classified = await _classify(bible, state, input.text, runId);
       kind = classified.$1;
       intent = classified.$2;
       emit(Classification(kind, intent));
       if (kind == IntentKind.query || kind == IntentKind.meta) {
-        await _answerQuery(
-            bible, identity, state, input.text, narrationHistory, emit, runId);
+        await _answerQuery(bible, identity, state, input.text, narrationHistory,
+            emit, runId, abortIfRequested);
         return;
       }
     }
@@ -205,6 +222,7 @@ class TurnEngine {
     ].where((s) => s.isNotEmpty).join('\n\n');
 
     // ---- 导演 ----
+    await abortIfRequested();
     final directorPrompt = buildDirectorPrompt(
       resolve: resolve,
       intent: kind == IntentKind.rejected ? '（越权尝试）$intent' : intent,
@@ -277,6 +295,8 @@ class TurnEngine {
         temperature: 0.85,
         maxTokens: plan.beat == Beat.chapterEnd ? 1600 : 900,
       ))) {
+        // 停止生成：用户已断开订阅，立即放弃本回合（不落库）
+        if (aborted()) return;
         // 生成层流式兜底（合规 §3.2）：命中本地词表即中断，不落库、报 CONTENT_BLOCKED
         final streamVerdict = ContentSafety.screenStream(narration.toString() + delta);
         if (streamVerdict.blocked) {
@@ -297,6 +317,7 @@ class TurnEngine {
         : narrationText;
 
     // ---- 提取 ----
+    await abortIfRequested();
     StateDelta delta;
     List<Choice> choices = [];
     try {
@@ -475,6 +496,8 @@ class TurnEngine {
     ];
 
     String? snapshotId;
+    // 停止生成的最后防线：中止必须在落库前生效，turnNo 保持不变
+    await abortIfRequested();
     try {
       snapshotId = await dao.commitTurn(
         runId: runId,
@@ -536,6 +559,7 @@ class TurnEngine {
     List<Map<String, Object?>> narrationHistory,
     void Function(TurnEvent) emit,
     String runId,
+    Future<void> Function() abortIfRequested,
   ) async {
     final system =
         '${ironLawSection(bible)}\n\n${buildCompanionPrompt(knowledge: state.knowledge.join('；'), stateSummary: stateSummary(state), recentTurns: narrationHistory.map((e) => (e['narration'] ?? '').toString()).join('\n'), question: question)}';
@@ -550,6 +574,8 @@ class TurnEngine {
         temperature: 0.6,
         maxTokens: 400,
       ))) {
+        // 停止生成：随行问答同样支持中止
+        await abortIfRequested();
         final streamVerdict = ContentSafety.screenStream(buf.toString() + delta);
         if (streamVerdict.blocked) {
           throw ContentSafety.contentBlockedError(streamVerdict.matched);
@@ -665,4 +691,9 @@ double _guessTimeDays(String intent) {
   if (RegExp(r'闭关|苦修|修炼').hasMatch(intent)) return 30;
   if (RegExp(r'去|探|寻|访|行|赶').hasMatch(intent)) return 2;
   return 1;
+}
+
+/// 用户主动停止生成的内部信号：不作为 TurnError 外发，静默终止本回合
+class _TurnAborted implements Exception {
+  const _TurnAborted();
 }

@@ -90,7 +90,10 @@ class _PlayPageState extends ConsumerState<PlayPage> {
                   ListTile(
                     leading: const Icon(Icons.history),
                     title: Text(
-                        s.turnNo == 0 ? '开局（序章之前）' : '第 ${s.chapter} 卷 · 回合 ${s.turnNo} 结束后'),
+                      s.turnNo == 0
+                          ? '开局（序章之前）'
+                          : '第 ${s.chapter} 卷 · 回合 ${s.turnNo} 结束后',
+                    ),
                     onTap: () async {
                       try {
                         final newId = await engine.branch(snapshotId: s.id);
@@ -103,8 +106,10 @@ class _PlayPageState extends ConsumerState<PlayPage> {
                         Navigator.of(sheetCtx).pop();
                         ScaffoldMessenger.of(this.context).showSnackBar(
                           SnackBar(
-                              content: Text(
-                                  '${engineCodeLabel(e.code)}：${e.message}')),
+                            content: Text(
+                              '${engineCodeLabel(e.code)}：${e.message}',
+                            ),
+                          ),
                         );
                       }
                     },
@@ -185,7 +190,8 @@ class _PlayPageState extends ConsumerState<PlayPage> {
               children: <Widget>[
                 if (play.phase == PlayPhase.error)
                   _ErrorBar(
-                    errorCode: play.errorCode ?? EngineCode.stateInvalid.wireName,
+                    errorCode:
+                        play.errorCode ?? EngineCode.stateInvalid.wireName,
                     message: play.errorMessage ?? '',
                     onRetry: () =>
                         ref.read(playProvider(widget.runId).notifier).retry(),
@@ -207,6 +213,9 @@ class _PlayPageState extends ConsumerState<PlayPage> {
                           night: night,
                           onChoice: (choice) => _submit(ChoiceInput(choice.id)),
                           onGoSettings: () => context.push('/settings'),
+                          onStop: () => ref
+                              .read(playProvider(widget.runId).notifier)
+                              .stopGeneration(),
                           runId: widget.runId,
                         ),
                         if (!_follow)
@@ -244,25 +253,30 @@ class _PlayPageState extends ConsumerState<PlayPage> {
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 14),
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                     decoration: BoxDecoration(
                       color: paperCardColor(Theme.of(context).brightness),
                       border: Border(
-                          top: BorderSide(
-                              color: Theme.of(context).dividerColor)),
+                        top: BorderSide(color: Theme.of(context).dividerColor),
+                      ),
                     ),
                     child: Row(
                       children: <Widget>[
-                        Icon(Icons.lock_outline,
-                            size: 16,
-                            color: Theme.of(context).colorScheme.secondary),
+                        Icon(
+                          Icons.lock_outline,
+                          size: 16,
+                          color: Theme.of(context).colorScheme.secondary,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             '青少年模式下只能使用选项推进',
                             style: TextStyle(
-                                fontSize: 13,
-                                color: Theme.of(context).colorScheme.secondary),
+                              fontSize: 13,
+                              color: Theme.of(context).colorScheme.secondary,
+                            ),
                           ),
                         ),
                       ],
@@ -369,7 +383,8 @@ class _StatusStrip extends StatelessWidget {
     if (state.relations.isEmpty) return '—';
     final e = state.relations.entries.first;
     final name =
-        npcNames[e.key] ?? e.key.replaceFirst(RegExp('^npc_'), '').replaceAll('_', ' ');
+        npcNames[e.key] ??
+        e.key.replaceFirst(RegExp('^npc_'), '').replaceAll('_', ' ');
     return '$name · ${e.value.status.label}';
   }
 
@@ -382,10 +397,7 @@ class _StatusStrip extends StatelessWidget {
         children: <Widget>[
           Text(
             label,
-            style: TextStyle(
-              fontSize: 11,
-              color: theme.colorScheme.secondary,
-            ),
+            style: TextStyle(fontSize: 11, color: theme.colorScheme.secondary),
           ),
           const SizedBox(height: 2),
           Text(
@@ -405,6 +417,7 @@ class _NarrationList extends StatelessWidget {
     required this.night,
     required this.onChoice,
     required this.onGoSettings,
+    required this.onStop,
     required this.runId,
   });
 
@@ -413,125 +426,177 @@ class _NarrationList extends StatelessWidget {
   final bool night;
   final ValueChanged<Choice> onChoice;
   final VoidCallback onGoSettings;
+  final VoidCallback onStop;
   final String runId;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final sub = theme.colorScheme.secondary;
-    final items = <Widget>[];
+    final tails = <Widget>[];
 
-    for (final b in play.blocks) {
-      if (b.hint) {
-        items.add(Padding(
+    // 生成中：推进指示 + 停止按钮（B6，覆盖 submitting / streaming）
+    if (play.phase == PlayPhase.submitting) {
+      tails.add(
+        Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: Center(
-            child: Text(
-              b.text,
-              style: TextStyle(fontSize: 12, letterSpacing: 2, color: sub),
+            child: Text('正在推进……', style: TextStyle(fontSize: 12, color: sub)),
+          ),
+        ),
+      );
+    }
+    if (play.busy) {
+      tails.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Center(
+            child: OutlinedButton.icon(
+              onPressed: onStop,
+              icon: const Icon(Icons.stop_circle_outlined, size: 18),
+              label: const Text('停止生成'),
             ),
           ),
-        ));
-      } else {
-        items.add(Padding(
-          padding: const EdgeInsets.only(bottom: 18),
-          child: Text(
-            b.text.isEmpty ? '……' : b.text,
-            style: theme.textTheme.bodyLarge?.copyWith(height: 1.9, fontSize: 17),
-          ),
-        ));
-      }
-    }
-
-    if (play.phase == PlayPhase.submitting) {
-      items.add(Padding(
-        padding: const EdgeInsets.only(bottom: 16),
-        child: Center(
-          child: Text('正在推进……', style: TextStyle(fontSize: 12, color: sub)),
         ),
-      ));
+      );
     }
 
     if (play.phase == PlayPhase.blocked) {
-      items.add(Padding(
-        padding: const EdgeInsets.only(bottom: 14),
-        child: PaperCard(
-          borderColor: theme.colorScheme.primary,
-          child: Row(
-            children: <Widget>[
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    const Text('配置模型后可继续',
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 4),
-                    Text('生成新的正文需要先配置模型服务。',
-                        style: TextStyle(fontSize: 12, color: sub)),
-                  ],
+      tails.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 14),
+          child: PaperCard(
+            borderColor: theme.colorScheme.primary,
+            child: Row(
+              children: <Widget>[
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      const Text(
+                        '配置模型后可继续',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '生成新的正文需要先配置模型服务。',
+                        style: TextStyle(fontSize: 12, color: sub),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              FilledButton(onPressed: onGoSettings, child: const Text('去设置')),
-            ],
+                const SizedBox(width: 10),
+                FilledButton(onPressed: onGoSettings, child: const Text('去设置')),
+              ],
+            ),
           ),
         ),
-      ));
+      );
     }
 
     if (play.ended) {
-      items.add(Padding(
-        padding: const EdgeInsets.only(bottom: 14),
-        child: PaperCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              const Text('这一局已经落幕',
+      tails.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 14),
+          child: PaperCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                const Text(
+                  '这一局已经落幕',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 6),
-              Text('翻开人生档案，看看这一生留下了什么。',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '翻开人生档案，看看这一生留下了什么。',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 12, color: sub)),
-              const SizedBox(height: 14),
-              FilledButton(
-                onPressed: () => context.push('/archive/$runId'),
-                child: const Text('查看人生档案'),
-              ),
-            ],
+                  style: TextStyle(fontSize: 12, color: sub),
+                ),
+                const SizedBox(height: 14),
+                FilledButton(
+                  onPressed: () => context.push('/archive/$runId'),
+                  child: const Text('查看人生档案'),
+                ),
+              ],
+            ),
           ),
         ),
-      ));
+      );
     } else if (play.phase == PlayPhase.awaitingChoice) {
       if (play.choices.isEmpty) {
-        items.add(Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Center(
-            child: Text('本回合没有给出选项，可在下方自由输入。',
-                style: TextStyle(fontSize: 12, color: sub)),
+        tails.add(
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Center(
+              child: Text(
+                '本回合没有给出选项，可在下方自由输入。',
+                style: TextStyle(fontSize: 12, color: sub),
+              ),
+            ),
           ),
-        ));
+        );
       }
       for (final c in play.choices) {
-        items.add(Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: _ChoiceCard(
-            choice: c,
-            night: night,
-            onTap: () => onChoice(c),
+        tails.add(
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: _ChoiceCard(
+              choice: c,
+              night: night,
+              onTap: () => onChoice(c),
+            ),
           ),
-        ));
+        );
       }
-    } else if (play.phase == PlayPhase.idle && items.isEmpty) {
-      items.add(Center(
-        child: Text('会发生什么，由你决定。', style: TextStyle(fontSize: 13, color: sub)),
-      ));
+    } else if (play.phase == PlayPhase.idle &&
+        play.blocks.isEmpty &&
+        tails.isEmpty) {
+      tails.add(
+        Center(
+          child: Text(
+            '会发生什么，由你决定。',
+            style: TextStyle(fontSize: 13, color: sub),
+          ),
+        ),
+      );
     }
 
-    return ListView(
+    // 长局渲染（B5）：builder 只构建可见条目，流式 delta 不再逐帧重建整列表
+    return ListView.builder(
       controller: controller,
       padding: const EdgeInsets.fromLTRB(24, 18, 24, 20),
-      children: items,
+      itemCount: play.blocks.length + tails.length,
+      itemBuilder: (context, i) {
+        if (i < play.blocks.length) {
+          final b = play.blocks[i];
+          if (b.hint) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Center(
+                child: Text(
+                  b.text,
+                  style: TextStyle(fontSize: 12, letterSpacing: 2, color: sub),
+                ),
+              ),
+            );
+          }
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 18),
+            child: Text(
+              b.text.isEmpty ? '……' : b.text,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                height: 1.9,
+                fontSize: 17,
+              ),
+            ),
+          );
+        }
+        return tails[i - play.blocks.length];
+      },
     );
   }
 }
@@ -565,14 +630,21 @@ class _ChoiceCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text(choice.label,
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+                Text(
+                  choice.label,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
                 if (choice.intent.isNotEmpty) ...<Widget>[
                   const SizedBox(height: 3),
-                  Text(choice.intent,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 12, color: sub)),
+                  Text(
+                    choice.intent,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 12, color: sub),
+                  ),
                 ],
               ],
             ),
