@@ -224,10 +224,40 @@ class _PlayPageState extends ConsumerState<PlayPage> {
                     ),
                   ),
                 ),
-                _InputBar(
-                  locked: play.busy || play.ended,
-                  onSend: (text) => _submit(FreeTextInput(text)),
-                ),
+                // 青少年模式（合规 §5）：关闭自由文本输入，保留预设选项
+                if (ref.watch(teenModeProvider))
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: paperCardColor(Theme.of(context).brightness),
+                      border: Border(
+                          top: BorderSide(
+                              color: Theme.of(context).dividerColor)),
+                    ),
+                    child: Row(
+                      children: <Widget>[
+                        Icon(Icons.lock_outline,
+                            size: 16,
+                            color: Theme.of(context).colorScheme.secondary),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '青少年模式下只能使用选项推进',
+                            style: TextStyle(
+                                fontSize: 13,
+                                color: Theme.of(context).colorScheme.secondary),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  _InputBar(
+                    locked: play.busy || play.ended,
+                    onSend: (text) => _submit(FreeTextInput(text)),
+                  ),
               ],
             ),
     );

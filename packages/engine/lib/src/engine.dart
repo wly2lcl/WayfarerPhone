@@ -6,6 +6,7 @@ import 'package:contracts/contracts.dart';
 import 'package:drift/drift.dart';
 
 import 'data/app_db.dart';
+import 'data/flags.dart';
 import 'data/runs_dao.dart';
 import 'errors.dart';
 import 'library/library_service.dart';
@@ -149,8 +150,11 @@ class Engine {
   final Random random;
   final _SettingsHolder _holder;
 
+  /// 应用私有/外部文件根（exports/worlds/imports/diagnostics 的父目录）
+  final String filesDir;
+
   Engine._(this.db, this.gateway, this.keyStore, this._holder,
-      {required String filesDir, Random? random})
+      {required this.filesDir, Random? random})
       : random = random ?? Random.secure() {
     turns = TurnEngine(db: db, gateway: gateway, queue: _queue, random: random);
     drafts = WorldDraftService(
@@ -800,6 +804,123 @@ class Engine {
       'failures': failures,
       'byRole': byRole,
     };
+  }
+
+  // ---- feedback（合规与内容安全 §3.3：本地记录，不联网上报）----
+
+  /// 写入一条本地反馈/举报记录。category 用「举报/反馈/错误报告」等短标签。
+  Future<void> submitFeedback({
+    String? runId,
+    required String category,
+    required String detail,
+  }) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    await db.into(db.feedbackRecords).insert(FeedbackRecordsCompanion.insert(
+          id: 'fb_${now.toRadixString(36)}_${random.nextInt(0xFFF).toRadixString(36)}',
+          category: category,
+          detail: detail,
+          runId: Value(runId),
+          createdAt: now,
+        ));
+  }
+
+  /// 读取本地反馈记录（新→旧），供设置页展示与随诊断包导出
+  Future<List<FeedbackRecord>> listFeedback({int limit = 50}) async {
+    return (db.select(db.feedbackRecords)
+          ..orderBy([(f) => OrderingTerm.desc(f.createdAt)])
+          ..limit(limit))
+        .get();
+  }
+
+  // ---- 本机应用开关（年龄门 / 青少年模式，合规与内容安全 §5）----
+
+  Future<String?> readAppSetting(String key) => AppFlags(db).read(key);
+
+  Future<void> writeAppSetting(String key, String value) =>
+      AppFlags(db).write(key, value);
+
+  Future<bool> isTeenMode() => AppFlags(db).teenModeOn();
+
+  Future<void> setTeenMode(bool on) =>
+      AppFlags(db).write(AppFlags.teenMode, on ? '1' : '0');
+
+  // ---- 诊断包（合规与内容安全 §6/§8：用户主动导出、本地文件、脱敏）----
+
+  /// 导出本地诊断包（JSON）。含模型配置（不含 Key，Key 只在系统安全存储）、
+  /// 开关状态、结构与计数、用量统计、反馈记录与近 7 天埋点；
+  /// **不含**叙事正文（run_events payload）、状态快照与世界圣经内容。
+  /// 返回文件路径，由 UI 经系统分享面板发出。
+  Future<String> exportDiagnostics({String? outPath}) async {
+    final now = DateTime.now();
+    final flags = AppFlags(db);
+
+    Future<int> countOf(dynamic table) async {
+      final exp = countAll();
+      final q = db.selectOnly(table)..addColumns([exp]);
+      return q.map((row) => row.read(exp) ?? 0).getSingle();
+    }
+
+    final counts = <String, Object?>{
+      'worlds': await countOf(db.worlds),
+      'worldVersions': await countOf(db.worldVersions),
+      'runs': await countOf(db.runs),
+      'snapshots': await countOf(db.runSnapshots),
+      'events': await countOf(db.runEvents),
+      'usageLog': await countOf(db.usageLog),
+      'drafts': await countOf(db.worldDrafts),
+      'importJobs': await countOf(db.importJobs),
+      'feedbackRecords': await countOf(db.feedbackRecords),
+    };
+
+    final since7d = now.millisecondsSinceEpoch - 7 * 86400000;
+    final events = await (db.select(db.localEvents)
+          ..where((e) => e.createdAt.isBiggerOrEqualValue(since7d))
+          ..orderBy([(e) => OrderingTerm.desc(e.createdAt)])
+          ..limit(200))
+        .get();
+
+    final feedback = await listFeedback(limit: 200);
+    final payload = <String, Object?>{
+      'kind': 'wayfarer_diagnostics',
+      'version': 1,
+      'generatedAt': now.toIso8601String(),
+      'schemaVersion': db.schemaVersion,
+      // Key 不入包：只存 iOS Keychain / Android Keystore，从不落 app_settings
+      'settings': modelSettings.toJson(),
+      'flags': {
+        'ageGate': await flags.read(AppFlags.ageGate),
+        'teenMode': await flags.read(AppFlags.teenMode) == '1',
+      },
+      'counts': counts,
+      'usage30d': (await usageStats(days: 30)).toJson(),
+      'usageSummary': await usageSummary(),
+      'feedback': [
+        for (final f in feedback)
+          {
+            'id': f.id,
+            'runId': f.runId,
+            'category': f.category,
+            'detail': f.detail,
+            'status': f.status,
+            'createdAt': f.createdAt,
+          },
+      ],
+      'events7d': [
+        for (final e in events)
+          {'name': e.name, 'props': e.props, 'createdAt': e.createdAt},
+      ],
+    };
+
+    late final String path;
+    if (outPath != null) {
+      path = outPath;
+    } else {
+      final dir = Directory('$filesDir/diagnostics');
+      await dir.create(recursive: true);
+      path = '${dir.path}/wf_diagnostics_${now.millisecondsSinceEpoch}.json';
+    }
+    await File(path).writeAsString(const JsonEncoder.withIndent('  ').convert(payload));
+    return path;
   }
 
   Future<void> close() => db.close();

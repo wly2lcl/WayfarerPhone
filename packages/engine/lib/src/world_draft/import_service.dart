@@ -9,9 +9,11 @@ import 'package:crypto/crypto.dart' as crypto;
 import 'package:drift/drift.dart';
 
 import '../data/app_db.dart';
+import '../data/flags.dart';
 import '../errors.dart';
 import '../llm/gateway.dart';
 import '../llm/settings.dart';
+import '../safety/content_safety.dart';
 import 'checks.dart' show QualityIssue, QualityReport;
 import 'draft_models.dart';
 import 'import_models.dart';
@@ -59,9 +61,18 @@ class ImportService {
   /// 终态任务原样返回——换档重合成请走 [regenerate]。
   Future<ImportJobView> start(String sourcePath,
       {ImportFidelity fidelity = ImportFidelity.fast}) async {
+    // 青少年模式（合规 §5）：关闭自定义导入入口
+    if (await AppFlags(db).teenModeOn()) {
+      throw EngineException(EngineCode.stateInvalid, '青少年模式下不可导入');
+    }
     final file = File(sourcePath);
     if (!await file.exists()) {
       throw EngineException(EngineCode.importInvalid, '文件不存在');
+    }
+    // 输入层内容安全（合规 §3.1）：文件名与元数据本地拦截
+    final nameVerdict = ContentSafety.screen(file.uri.pathSegments.last);
+    if (nameVerdict.blocked) {
+      throw ContentSafety.contentBlockedError(nameVerdict.matched);
     }
     final bytes = await file.readAsBytes();
     if (bytes.length > maxBytes) {

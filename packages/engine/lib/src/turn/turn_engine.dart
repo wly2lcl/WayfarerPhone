@@ -6,6 +6,7 @@ import 'package:contracts/contracts.dart';
 import 'package:drift/drift.dart';
 
 import '../data/app_db.dart';
+import '../data/flags.dart';
 import '../data/runs_dao.dart';
 import '../errors.dart';
 import '../llm/gateway.dart';
@@ -13,6 +14,7 @@ import '../llm/settings.dart';
 import '../prompts/roles.dart';
 import '../rules/ending.dart';
 import '../rules/resolver.dart';
+import '../safety/content_safety.dart';
 import '../world_draft/draft_package.dart';
 import 'apply.dart';
 import 'context.dart';
@@ -94,6 +96,24 @@ class TurnEngine {
     }
 
     final state = (await RunsDao(db).loadState(runId))!;
+
+    // ---- 青少年模式（合规 §5）：关闭自由文本输入，保留预设选项 ----
+    if (input is FreeTextInput && await AppFlags(db).teenModeOn()) {
+      emit(TurnError(EngineCode.stateInvalid.wireName,
+          '青少年模式下只能使用选项推进，不能自由输入', false));
+      return;
+    }
+
+    // ---- 输入层内容安全（合规 §3.1）：本地词表命中即拒，不发起模型请求 ----
+    if (input is FreeTextInput) {
+      final verdict = ContentSafety.screen(input.text);
+      if (verdict.blocked) {
+        emit(TurnError(EngineCode.contentBlocked.wireName,
+            ContentSafety.contentBlockedError(verdict.matched).message, false));
+        return;
+      }
+    }
+
     final memory = CompactMemory.fromJson(await RunsDao(db).loadMemory(runId));
     final book = EngineBookkeeping.fromMemoryJson(
         await RunsDao(db).loadMemory(runId));
@@ -257,6 +277,11 @@ class TurnEngine {
         temperature: 0.85,
         maxTokens: plan.beat == Beat.chapterEnd ? 1600 : 900,
       ))) {
+        // 生成层流式兜底（合规 §3.2）：命中本地词表即中断，不落库、报 CONTENT_BLOCKED
+        final streamVerdict = ContentSafety.screenStream(narration.toString() + delta);
+        if (streamVerdict.blocked) {
+          throw ContentSafety.contentBlockedError(streamVerdict.matched);
+        }
         narration.write(delta);
         emit(NarrationDelta(delta));
       }
@@ -514,6 +539,7 @@ class TurnEngine {
   ) async {
     final system =
         '${ironLawSection(bible)}\n\n${buildCompanionPrompt(knowledge: state.knowledge.join('；'), stateSummary: stateSummary(state), recentTurns: narrationHistory.map((e) => (e['narration'] ?? '').toString()).join('\n'), question: question)}';
+    final buf = StringBuffer();
     try {
       await for (final delta in gateway.stream(GatewayRequest(
         role: GatewayRole.companion,
@@ -524,13 +550,21 @@ class TurnEngine {
         temperature: 0.6,
         maxTokens: 400,
       ))) {
+        final streamVerdict = ContentSafety.screenStream(buf.toString() + delta);
+        if (streamVerdict.blocked) {
+          throw ContentSafety.contentBlockedError(streamVerdict.matched);
+        }
+        buf.write(delta);
         emit(NarrationDelta(delta));
       }
+      emit(NarrationEnd());
+      emit(TurnEnd(state.meta.turnNo, null, null));
     } on EngineException {
+      // 中断/失败：回退到安全文案，不展开命中内容
       emit(NarrationDelta(companionFallback));
+      emit(NarrationEnd());
+      emit(TurnEnd(state.meta.turnNo, null, null));
     }
-    emit(NarrationEnd());
-    emit(TurnEnd(state.meta.turnNo, null, null));
   }
 
   Future<String> _compact(

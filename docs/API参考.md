@@ -1,6 +1,6 @@
 # API 参考 · 本地引擎与模型网关
 
-> 版本：v0.8（单机离线）
+> 版本：v1.0（单机离线）
 > 最后更新：2026-10-28
 > 上游：[技术方案](./技术方案.md) ｜ 相关：[Prompt 契约](./Prompt契约.md)
 >
@@ -54,7 +54,7 @@ class EngineException implements Exception {
 | `MODEL_TIMEOUT` | 连接 / 首字 / 空闲超时 | 可重试一次 |
 | `MODEL_BAD_OUTPUT` | 结构化输出连续不可解析 | 降级场景，可重试 |
 | `MODEL_NETWORK` | 无网络、DNS、TLS 失败 | 提醒检查网络，可重试 |
-| `CONTENT_BLOCKED` | 输入或生成命中本地规则 | 引导换一种表达 |
+| `CONTENT_BLOCKED` | 输入或生成命中本地规则；触发点：自由输入、访谈问答、导入文件名（本地拦截，不发起模型请求）；生成层命中时流中断走兜底，不落库 | 引导换一种表达 |
 | `STATE_INVALID` | 状态校验不可恢复 | 上报日志，允许回滚快照 |
 | `STORAGE_FULL` | 本地磁盘不足 | 提示清理旧局或导出 |
 | `IMPORT_INVALID` | `.world` / `.run` 包结构、校验和或格式版本不通过；TXT 导入中文件不存在 / 编码无法识别 / 内容与任务记录不一致 | 展示具体原因 |
@@ -109,6 +109,11 @@ class EngineException implements Exception {
 | `library.space()` | 各世界占用（`files/worlds/<id>/` 导入原件）+ 导入原文缓存字节 |
 | `usage.summary({from, to})` | 本地用量与成本估算 |
 | `settings.testConnection()` | 用最小请求验证 baseUrl + Key + 模型名 |
+| `settings.readAppSetting(key)` | 读功能开关（`AppFlags.ageGate` / `AppFlags.teenMode`） |
+| `settings.writeAppSetting(key, value)` | 写功能开关 |
+| `settings.isTeenMode()` | 青少年模式是否开启（读 `teen_mode == '1'`） |
+| `settings.setTeenMode(on)` | 开/关青少年模式（写 `teen_mode`） |
+| `settings.exportDiagnostics({outPath})` | 导出脱敏诊断 JSON 到 `files/diagnostics/`（默认）或指定路径，返回文件路径（2026-10-29 新增） |
 
 ---
 
@@ -304,6 +309,31 @@ final report = await engine.testConnection();
 
 发一个 `max_tokens = 8` 的最小请求，返回 `ConnectionReport(ok, model, latencyMs, errorCode?)`。不写任何业务表。
 
+### feedback（反馈与举报，2026-10-29 新增）
+
+```dart
+await engine.submitFeedback(runId: ..., category: '反馈', detail: '...'); // 写入 feedback_records，返回 void
+final list = await engine.listFeedback(limit: 50);                        // List<FeedbackRecord>，按 createdAt 倒序
+```
+
+- 只落本机 `feedback_records` 表（runId 可空），**不联网上报**；合规与内容安全 §3.3。
+- UI 入口在设置页「反馈与举报」，提交成功提示「仅保存在本机，可随诊断包发出」。
+
+### settings.*（功能开关与诊断包，2026-10-29 新增）
+
+```dart
+final teen = await engine.isTeenMode();                    // bool，读 app_settings.teen_mode == '1'
+await engine.setTeenMode(true);                            // 写 teen_mode（App 内经设置页开关调用）
+final v = await engine.readAppSetting(AppFlags.ageGate);   // String?，'adult' | 'teen' | null（未确认）
+await engine.writeAppSetting(AppFlags.teenMode, '1');      // 通用开关写入
+final path = await engine.exportDiagnostics();             // → files/diagnostics/wf_diagnostics_<ts>.json
+final path = await engine.exportDiagnostics(outPath: ...); // 或指定输出路径
+```
+
+- 功能开关经 `AppFlags`（`AppFlags.ageGate = 'age_gate'`、`AppFlags.teenMode = 'teen_mode'`）落 `app_settings` 表；首启年龄门选择「未满 18 周岁」时 App 层自动 `setTeenMode(true)`。
+- **青少年模式护栏**（引擎层，全部在访问文件/网络之前抛 `STATE_INVALID`）：`turns.run` 拒绝 `FreeTextInput`（仅选项可推进，不发起模型请求）；`library.export / import / runs.exportPack / runs.importPack` 与 `imports.start` 拒绝调用。UI 侧同步隐藏对应入口（工坊 TXT、管理页导入、我的局导入/导出、世界详情导出、人生卡片）。
+- **诊断包**（`exportDiagnostics`）脱敏清单——**不含**：模型 Key、`run_events` 叙事正文、快照、圣经、导入原文；**包含**：`kind/version/generatedAt/schemaVersion`、设置项（不含 Key 字段）、功能开关、9 张业务表行数计数、近 30 天用量聚合（请求数/失败/p50/p95/token/回合）、反馈记录 ≤200 条、近 7 天本地事件 ≤200 条（仅类型与回合号）。UI 入口在设置页「诊断」节「导出诊断数据」。
+
 ---
 
 ## 4. TurnEvent 定义
@@ -422,6 +452,8 @@ class TurnError        extends TurnEvent { final EngineCode code; final String m
 
 | 日期 | 变更 |
 | --- | --- |
+| 2026-10-29 | v1.0：诊断包与未成年人保护——门面清单与新增 §3 节：`settings.readAppSetting/writeAppSetting/isTeenMode/setTeenMode/exportDiagnostics`、`AppFlags` 开关键、青少年模式护栏清单（turns.run 自由输入 / library 四入口 / imports.start 抛 `STATE_INVALID`）、诊断包脱敏清单 |
+| 2026-10-29 | v0.9：内容安全与反馈——新增 `feedback` 节（`Engine.submitFeedback` / `listFeedback`，落本机 `feedback_records` 表不联网）；`CONTENT_BLOCKED` 错误码补触发点（自由输入/访谈/导入文件名本地拦截、生成层流中断兜底不落库） |
 | 2026-10-23 | v0.1：HTTP 端点、SSE、错误码、配额 |
 | 2026-10-23 | v0.2：改为本地引擎门面 + 模型网关契约；删除账号、配额、409、幂等键与服务端错误码 |
 | 2026-10-23 | v0.3：新增三种模型协议适配、供应商预设、`.run` 存档包导入导出 |

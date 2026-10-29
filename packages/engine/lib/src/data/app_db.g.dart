@@ -6110,6 +6110,409 @@ class LocalEventsCompanion extends UpdateCompanion<LocalEvent> {
   }
 }
 
+class $FeedbackRecordsTable extends FeedbackRecords
+    with TableInfo<$FeedbackRecordsTable, FeedbackRecord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $FeedbackRecordsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _runIdMeta = const VerificationMeta('runId');
+  @override
+  late final GeneratedColumn<String> runId = GeneratedColumn<String>(
+    'run_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _categoryMeta = const VerificationMeta(
+    'category',
+  );
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+    'category',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _detailMeta = const VerificationMeta('detail');
+  @override
+  late final GeneratedColumn<String> detail = GeneratedColumn<String>(
+    'detail',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    clientDefault: () => 'open',
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    runId,
+    category,
+    detail,
+    status,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'feedback_records';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<FeedbackRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('run_id')) {
+      context.handle(
+        _runIdMeta,
+        runId.isAcceptableOrUnknown(data['run_id']!, _runIdMeta),
+      );
+    }
+    if (data.containsKey('category')) {
+      context.handle(
+        _categoryMeta,
+        category.isAcceptableOrUnknown(data['category']!, _categoryMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_categoryMeta);
+    }
+    if (data.containsKey('detail')) {
+      context.handle(
+        _detailMeta,
+        detail.isAcceptableOrUnknown(data['detail']!, _detailMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_detailMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  FeedbackRecord map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return FeedbackRecord(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      runId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}run_id'],
+      ),
+      category: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category'],
+      )!,
+      detail: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}detail'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $FeedbackRecordsTable createAlias(String alias) {
+    return $FeedbackRecordsTable(attachedDatabase, alias);
+  }
+}
+
+class FeedbackRecord extends DataClass implements Insertable<FeedbackRecord> {
+  final String id;
+  final String? runId;
+  final String category;
+  final String detail;
+  final String status;
+  final int createdAt;
+  const FeedbackRecord({
+    required this.id,
+    this.runId,
+    required this.category,
+    required this.detail,
+    required this.status,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    if (!nullToAbsent || runId != null) {
+      map['run_id'] = Variable<String>(runId);
+    }
+    map['category'] = Variable<String>(category);
+    map['detail'] = Variable<String>(detail);
+    map['status'] = Variable<String>(status);
+    map['created_at'] = Variable<int>(createdAt);
+    return map;
+  }
+
+  FeedbackRecordsCompanion toCompanion(bool nullToAbsent) {
+    return FeedbackRecordsCompanion(
+      id: Value(id),
+      runId: runId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(runId),
+      category: Value(category),
+      detail: Value(detail),
+      status: Value(status),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory FeedbackRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return FeedbackRecord(
+      id: serializer.fromJson<String>(json['id']),
+      runId: serializer.fromJson<String?>(json['runId']),
+      category: serializer.fromJson<String>(json['category']),
+      detail: serializer.fromJson<String>(json['detail']),
+      status: serializer.fromJson<String>(json['status']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'runId': serializer.toJson<String?>(runId),
+      'category': serializer.toJson<String>(category),
+      'detail': serializer.toJson<String>(detail),
+      'status': serializer.toJson<String>(status),
+      'createdAt': serializer.toJson<int>(createdAt),
+    };
+  }
+
+  FeedbackRecord copyWith({
+    String? id,
+    Value<String?> runId = const Value.absent(),
+    String? category,
+    String? detail,
+    String? status,
+    int? createdAt,
+  }) => FeedbackRecord(
+    id: id ?? this.id,
+    runId: runId.present ? runId.value : this.runId,
+    category: category ?? this.category,
+    detail: detail ?? this.detail,
+    status: status ?? this.status,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  FeedbackRecord copyWithCompanion(FeedbackRecordsCompanion data) {
+    return FeedbackRecord(
+      id: data.id.present ? data.id.value : this.id,
+      runId: data.runId.present ? data.runId.value : this.runId,
+      category: data.category.present ? data.category.value : this.category,
+      detail: data.detail.present ? data.detail.value : this.detail,
+      status: data.status.present ? data.status.value : this.status,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FeedbackRecord(')
+          ..write('id: $id, ')
+          ..write('runId: $runId, ')
+          ..write('category: $category, ')
+          ..write('detail: $detail, ')
+          ..write('status: $status, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, runId, category, detail, status, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is FeedbackRecord &&
+          other.id == this.id &&
+          other.runId == this.runId &&
+          other.category == this.category &&
+          other.detail == this.detail &&
+          other.status == this.status &&
+          other.createdAt == this.createdAt);
+}
+
+class FeedbackRecordsCompanion extends UpdateCompanion<FeedbackRecord> {
+  final Value<String> id;
+  final Value<String?> runId;
+  final Value<String> category;
+  final Value<String> detail;
+  final Value<String> status;
+  final Value<int> createdAt;
+  final Value<int> rowid;
+  const FeedbackRecordsCompanion({
+    this.id = const Value.absent(),
+    this.runId = const Value.absent(),
+    this.category = const Value.absent(),
+    this.detail = const Value.absent(),
+    this.status = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  FeedbackRecordsCompanion.insert({
+    required String id,
+    this.runId = const Value.absent(),
+    required String category,
+    required String detail,
+    this.status = const Value.absent(),
+    required int createdAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       category = Value(category),
+       detail = Value(detail),
+       createdAt = Value(createdAt);
+  static Insertable<FeedbackRecord> custom({
+    Expression<String>? id,
+    Expression<String>? runId,
+    Expression<String>? category,
+    Expression<String>? detail,
+    Expression<String>? status,
+    Expression<int>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (runId != null) 'run_id': runId,
+      if (category != null) 'category': category,
+      if (detail != null) 'detail': detail,
+      if (status != null) 'status': status,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  FeedbackRecordsCompanion copyWith({
+    Value<String>? id,
+    Value<String?>? runId,
+    Value<String>? category,
+    Value<String>? detail,
+    Value<String>? status,
+    Value<int>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return FeedbackRecordsCompanion(
+      id: id ?? this.id,
+      runId: runId ?? this.runId,
+      category: category ?? this.category,
+      detail: detail ?? this.detail,
+      status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (runId.present) {
+      map['run_id'] = Variable<String>(runId.value);
+    }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
+    }
+    if (detail.present) {
+      map['detail'] = Variable<String>(detail.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FeedbackRecordsCompanion(')
+          ..write('id: $id, ')
+          ..write('runId: $runId, ')
+          ..write('category: $category, ')
+          ..write('detail: $detail, ')
+          ..write('status: $status, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDb extends GeneratedDatabase {
   _$AppDb(QueryExecutor e) : super(e);
   $AppDbManager get managers => $AppDbManager(this);
@@ -6124,6 +6527,9 @@ abstract class _$AppDb extends GeneratedDatabase {
   late final $ImportChunksTable importChunks = $ImportChunksTable(this);
   late final $AppSettingsTable appSettings = $AppSettingsTable(this);
   late final $LocalEventsTable localEvents = $LocalEventsTable(this);
+  late final $FeedbackRecordsTable feedbackRecords = $FeedbackRecordsTable(
+    this,
+  );
   late final Index idxWvWorldVersion = Index(
     'idx_wv_world_version',
     'CREATE UNIQUE INDEX idx_wv_world_version ON world_versions (world_id, version)',
@@ -6168,6 +6574,7 @@ abstract class _$AppDb extends GeneratedDatabase {
     importChunks,
     appSettings,
     localEvents,
+    feedbackRecords,
     idxWvWorldVersion,
     idxDraftsStatus,
     idxRunsWorld,
@@ -9171,6 +9578,225 @@ typedef $$LocalEventsTableProcessedTableManager =
       LocalEvent,
       PrefetchHooks Function()
     >;
+typedef $$FeedbackRecordsTableCreateCompanionBuilder =
+    FeedbackRecordsCompanion Function({
+      required String id,
+      Value<String?> runId,
+      required String category,
+      required String detail,
+      Value<String> status,
+      required int createdAt,
+      Value<int> rowid,
+    });
+typedef $$FeedbackRecordsTableUpdateCompanionBuilder =
+    FeedbackRecordsCompanion Function({
+      Value<String> id,
+      Value<String?> runId,
+      Value<String> category,
+      Value<String> detail,
+      Value<String> status,
+      Value<int> createdAt,
+      Value<int> rowid,
+    });
+
+class $$FeedbackRecordsTableFilterComposer
+    extends Composer<_$AppDb, $FeedbackRecordsTable> {
+  $$FeedbackRecordsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get runId => $composableBuilder(
+    column: $table.runId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get detail => $composableBuilder(
+    column: $table.detail,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$FeedbackRecordsTableOrderingComposer
+    extends Composer<_$AppDb, $FeedbackRecordsTable> {
+  $$FeedbackRecordsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get runId => $composableBuilder(
+    column: $table.runId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get detail => $composableBuilder(
+    column: $table.detail,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$FeedbackRecordsTableAnnotationComposer
+    extends Composer<_$AppDb, $FeedbackRecordsTable> {
+  $$FeedbackRecordsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get runId =>
+      $composableBuilder(column: $table.runId, builder: (column) => column);
+
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
+
+  GeneratedColumn<String> get detail =>
+      $composableBuilder(column: $table.detail, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$FeedbackRecordsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDb,
+          $FeedbackRecordsTable,
+          FeedbackRecord,
+          $$FeedbackRecordsTableFilterComposer,
+          $$FeedbackRecordsTableOrderingComposer,
+          $$FeedbackRecordsTableAnnotationComposer,
+          $$FeedbackRecordsTableCreateCompanionBuilder,
+          $$FeedbackRecordsTableUpdateCompanionBuilder,
+          (
+            FeedbackRecord,
+            BaseReferences<_$AppDb, $FeedbackRecordsTable, FeedbackRecord>,
+          ),
+          FeedbackRecord,
+          PrefetchHooks Function()
+        > {
+  $$FeedbackRecordsTableTableManager(_$AppDb db, $FeedbackRecordsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$FeedbackRecordsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$FeedbackRecordsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$FeedbackRecordsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String?> runId = const Value.absent(),
+                Value<String> category = const Value.absent(),
+                Value<String> detail = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FeedbackRecordsCompanion(
+                id: id,
+                runId: runId,
+                category: category,
+                detail: detail,
+                status: status,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                Value<String?> runId = const Value.absent(),
+                required String category,
+                required String detail,
+                Value<String> status = const Value.absent(),
+                required int createdAt,
+                Value<int> rowid = const Value.absent(),
+              }) => FeedbackRecordsCompanion.insert(
+                id: id,
+                runId: runId,
+                category: category,
+                detail: detail,
+                status: status,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$FeedbackRecordsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDb,
+      $FeedbackRecordsTable,
+      FeedbackRecord,
+      $$FeedbackRecordsTableFilterComposer,
+      $$FeedbackRecordsTableOrderingComposer,
+      $$FeedbackRecordsTableAnnotationComposer,
+      $$FeedbackRecordsTableCreateCompanionBuilder,
+      $$FeedbackRecordsTableUpdateCompanionBuilder,
+      (
+        FeedbackRecord,
+        BaseReferences<_$AppDb, $FeedbackRecordsTable, FeedbackRecord>,
+      ),
+      FeedbackRecord,
+      PrefetchHooks Function()
+    >;
 
 class $AppDbManager {
   final _$AppDb _db;
@@ -9196,4 +9822,6 @@ class $AppDbManager {
       $$AppSettingsTableTableManager(_db, _db.appSettings);
   $$LocalEventsTableTableManager get localEvents =>
       $$LocalEventsTableTableManager(_db, _db.localEvents);
+  $$FeedbackRecordsTableTableManager get feedbackRecords =>
+      $$FeedbackRecordsTableTableManager(_db, _db.feedbackRecords);
 }

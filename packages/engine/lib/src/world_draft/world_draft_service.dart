@@ -12,6 +12,7 @@ import '../library/checksum.dart';
 import '../llm/gateway.dart';
 import '../llm/settings.dart' show GatewayRole;
 import '../prompts/roles.dart' show extractJson;
+import '../safety/content_safety.dart';
 import 'checks.dart';
 import 'draft_models.dart';
 import 'import_models.dart';
@@ -170,6 +171,13 @@ class WorldDraftService {
     if (row == null) throw EngineException(EngineCode.notFound, '草稿不存在');
     if (row.status != DraftStatus.draft.name) {
       throw EngineException(EngineCode.stateInvalid, '访谈仅在 draft 阶段可用');
+    }
+    // 输入层内容安全（合规 §3.1）：访谈回答本地拦截，不发起模型请求
+    if (!skip) {
+      final verdict = ContentSafety.screen(text);
+      if (verdict.blocked) {
+        throw ContentSafety.contentBlockedError(verdict.matched);
+      }
     }
     final interview =
         InterviewState.fromJson(jsonDecode(row.interview ?? '{}'));

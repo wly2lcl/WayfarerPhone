@@ -6,6 +6,7 @@ import 'package:contracts/contracts.dart';
 import 'package:drift/drift.dart';
 
 import '../data/app_db.dart';
+import '../data/flags.dart';
 import '../errors.dart';
 import 'checksum.dart';
 import 'run_package.dart';
@@ -64,9 +65,17 @@ class LibraryService {
     Random? random,
   }) : random = random ?? Random.secure();
 
+  /// 青少年模式（合规与内容安全 §5）：导入与导出入口一律不可用（TODO WF-LAUNCH-04 验收）
+  Future<void> _ensureNotTeen(String action) async {
+    if (await AppFlags(db).teenModeOn()) {
+      throw EngineException(EngineCode.stateInvalid, '青少年模式下不可$action');
+    }
+  }
+
   // ---- .world 导出（WF-M3-02-01）----
 
   Future<ExportedFile> export(String worldId) async {
+    await _ensureNotTeen('导出');
     final w = await _world(worldId);
     if (!w.exportable) {
       throw EngineException(EngineCode.exportForbidden, '导入来源的世界不可导出（exportable = 0）');
@@ -95,6 +104,7 @@ class LibraryService {
   // ---- .world 导入（WF-M3-02-02，§6 校验与冲突表）----
 
   Future<WorldImportResult> import(String filePath, {bool overwrite = false}) async {
+    await _ensureNotTeen('导入');
     final f = File(filePath);
     if (!await f.exists()) {
       throw EngineException(EngineCode.notFound, '文件不存在');
@@ -248,6 +258,7 @@ class LibraryService {
   /// builtin 世界随 App 分发、`.world` 不可导出，但其存档 `.run` 豁免开放（跨设备续玩）；
   /// 导入来源（source = import）世界仍 EXPORT_FORBIDDEN。
   Future<ExportedFile> exportRunPack(String runId) async {
+    await _ensureNotTeen('导出');
     final r = await (db.select(db.runs)..where((x) => x.id.equals(runId))).getSingleOrNull();
     if (r == null) throw EngineException(EngineCode.notFound, '局不存在');
     if (r.isTrial) {
@@ -313,6 +324,7 @@ class LibraryService {
   // ---- .run 存档包导入（WF-M3-04-02）----
 
   Future<RunImportResult> importRunPack(String filePath) async {
+    await _ensureNotTeen('导入');
     final f = File(filePath);
     if (!await f.exists()) {
       throw EngineException(EngineCode.notFound, '文件不存在');

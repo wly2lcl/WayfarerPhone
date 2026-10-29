@@ -26,4 +26,16 @@ class UsageStats {
     required this.turns,
     required this.avgTokensPerTurn,
   });
+
+  Map<String, Object?> toJson() => {
+        'days': days,
+        'requests': requests,
+        'failures': failures,
+        'p50Ms': p50Ms,
+        'p95Ms': p95Ms,
+        'tokensIn': tokensIn,
+        'tokensOut': tokensOut,
+        'turns': turns,
+        'avgTokensPerTurn': avgTokensPerTurn,
+      };
 }

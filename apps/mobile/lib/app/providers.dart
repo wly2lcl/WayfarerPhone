@@ -10,3 +10,7 @@ final engineProvider = Provider<Engine>((ref) {
 
 /// 夜读模式开关（true = 深棕黑底暖黄字）
 final nightModeProvider = StateProvider<bool>((ref) => false);
+
+/// 青少年模式开关（合规与内容安全 §5）：true 时导入/导出入口关闭、自由输入禁用。
+/// 启动时由 main.dart 从引擎 app_settings 读入并 override。
+final teenModeProvider = StateProvider<bool>((ref) => false);

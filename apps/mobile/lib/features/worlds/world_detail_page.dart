@@ -36,7 +36,8 @@ class WorldDetailPage extends ConsumerWidget {
                 _ => null,
               },
               itemBuilder: (context) => <PopupMenuEntry<String>>[
-                if (world.exportable)
+                // 青少年模式（合规 §5）：导出入口不可用
+                if (world.exportable && !ref.watch(teenModeProvider))
                   const PopupMenuItem(
                       value: 'export',
                       child: ListTile(

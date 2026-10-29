@@ -1,6 +1,7 @@
 import 'package:engine/engine.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../app/providers.dart';
 import '../../core/engine_errors.dart';
@@ -21,6 +22,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   late final TextEditingController _smallModel;
   late final TextEditingController _price;
   final TextEditingController _key = TextEditingController();
+  final TextEditingController _feedback = TextEditingController();
 
   late LlmProtocol _protocol;
   late String _presetId;
@@ -54,6 +56,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     _smallModel.dispose();
     _price.dispose();
     _key.dispose();
+    _feedback.dispose();
     super.dispose();
   }
 
@@ -135,6 +138,78 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           .showSnackBar(SnackBar(content: Text('保存失败：$e')));
     } finally {
       if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  /// 反馈层（合规与内容安全 §3.3）：只写本地 feedback_records，不联网上报
+  Future<void> _submitFeedback() async {
+    final detail = _feedback.text.trim();
+    if (detail.isEmpty) return;
+    try {
+      await ref
+          .read(engineProvider)
+          .submitFeedback(category: '反馈', detail: detail);
+      if (!mounted) return;
+      _feedback.clear();
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('已记录（仅保存在本机，可随诊断包发出）')));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('记录失败：$e')));
+    }
+  }
+
+  /// 青少年模式（合规与内容安全 §5，TODO WF-LAUNCH-04）：
+  /// 切换需确认；开启后导入/导出入口关闭、游玩仅能使用选项推进
+  Future<void> _toggleTeenMode(bool on) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(on ? '开启青少年模式？' : '关闭青少年模式？'),
+        content: Text(on
+            ? '开启后：关闭 .world / .run / 小说导入与所有导出入口，游玩中只能使用选项推进，不能自由输入。'
+            : '关闭后将恢复导入、导出与自由输入。请确认使用者已满 18 周岁。'),
+        actions: <Widget>[
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('取消')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(on ? '开启' : '关闭')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await ref.read(engineProvider).setTeenMode(on);
+      ref.read(teenModeProvider.notifier).state = on;
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(on ? '已开启青少年模式' : '已关闭青少年模式')));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('操作失败：$e')));
+    }
+  }
+
+  /// 诊断包（合规与内容安全 §6/§8）：本地生成 JSON，经系统分享面板由用户主动发出。
+  /// 包含模型配置（不含 Key）、用量统计、结构与计数、反馈记录与近 7 天埋点；
+  /// 不含叙事正文与状态快照。
+  Future<void> _exportDiagnostics() async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final path = await ref.read(engineProvider).exportDiagnostics();
+      await SharePlus.instance.share(ShareParams(
+        files: [XFile(path, name: path.split('/').last)],
+        title: '远行诊断包',
+      ));
+    } on EngineException catch (e) {
+      messenger.showSnackBar(
+          SnackBar(content: Text('${engineCodeLabel(e.code)}：${e.message}')));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('导出失败：$e')));
     }
   }
 
@@ -247,6 +322,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             value: ref.watch(nightModeProvider),
             onChanged: (v) => ref.read(nightModeProvider.notifier).state = v,
           ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('青少年模式', style: TextStyle(fontSize: 15)),
+            subtitle: Text(
+                '未成年人保护：开启后导入/导出入口关闭，游玩仅能使用选项推进。',
+                style: TextStyle(fontSize: 12, color: sub)),
+            value: ref.watch(teenModeProvider),
+            onChanged: _toggleTeenMode,
+          ),
           const SizedBox(height: 18),
           PaperSectionLabel('供应商预设'),
           const SizedBox(height: 8),
@@ -349,6 +433,44 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
           const SizedBox(height: 24),
           _buildUsageSection(theme, sub),
+          const SizedBox(height: 24),
+          // 反馈层（合规与内容安全 §3.3）：只写本地记录，不联网上报
+          PaperSectionLabel('反馈与举报'),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _feedback,
+            minLines: 2,
+            maxLines: 4,
+            style: const TextStyle(fontSize: 14),
+            decoration: paperInputDecoration(context, '问题或违规内容描述',
+                hint: '描述问题或粘贴越界内容；仅保存在本机'),
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: OutlinedButton.icon(
+              onPressed: _submitFeedback,
+              icon: const Icon(Icons.flag_outlined, size: 16),
+              label: const Text('记录反馈'),
+            ),
+          ),
+          const SizedBox(height: 24),
+          // 诊断包（合规与内容安全 §6/§8）：脱敏 JSON，由用户主动经分享面板发出
+          PaperSectionLabel('诊断'),
+          const SizedBox(height: 8),
+          Text(
+            '生成脱敏诊断文件：模型配置（不含 Key）、用量统计、数据计数、反馈记录与近 7 天埋点。不含叙事正文。',
+            style: TextStyle(fontSize: 12, color: sub),
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: OutlinedButton.icon(
+              onPressed: _exportDiagnostics,
+              icon: const Icon(Icons.upload_file_outlined, size: 16),
+              label: const Text('导出诊断数据'),
+            ),
+          ),
           const SizedBox(height: 24),
           Row(
             children: <Widget>[

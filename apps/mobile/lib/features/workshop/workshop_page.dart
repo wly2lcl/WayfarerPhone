@@ -56,12 +56,21 @@ class WorkshopPage extends ConsumerWidget {
               onTap: () => _createDialogue(context, ref),
             ),
             const SizedBox(height: 12),
-            _EntryCard(
-              icon: Icons.upload_file_outlined,
-              title: '导入小说 TXT',
-              desc: '把一本小说变成世界：抽取实体、生成圣经、审阅后开玩',
-              onTap: () => context.push('/workshop/import'),
-            ),
+            // 青少年模式（合规 §5）：自定义导入入口不可用
+            if (ref.watch(teenModeProvider))
+              const _EntryCard(
+                icon: Icons.lock_outline,
+                title: '导入小说 TXT（已关闭）',
+                desc: '青少年模式下导入入口不可用',
+                onTap: null,
+              )
+            else
+              _EntryCard(
+                icon: Icons.upload_file_outlined,
+                title: '导入小说 TXT',
+                desc: '把一本小说变成世界：抽取实体、生成圣经、审阅后开玩',
+                onTap: () => context.push('/workshop/import'),
+              ),
             const SizedBox(height: 22),
             if (list.isEmpty)
               Padding(
@@ -100,7 +109,7 @@ class _EntryCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final String desc;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {

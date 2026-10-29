@@ -153,22 +153,41 @@ class _ManagePageState extends ConsumerState<ManagePage> {
                 ),
               ],
               const SizedBox(height: 20),
-              FilledButton.icon(
-                onPressed: _importing ? null : _importWorld,
-                icon: _importing
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Icon(Icons.file_download_outlined, size: 18),
-                label: Text(_importing ? '正在导入……' : '导入 .world 世界包'),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                '把朋友分享的 .world 文件导入后即可试玩；再导出时保留原作者声明，小说导入的世界不可导出。',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12, height: 1.7, color: sub),
-              ),
+              // 青少年模式（合规 §5）：导入入口不可用
+              if (ref.watch(teenModeProvider)) ...<Widget>[
+                PaperCard(
+                  shadow: false,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    children: <Widget>[
+                      const Icon(Icons.lock_outline, size: 16),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text('青少年模式下导入入口已关闭',
+                            style: TextStyle(fontSize: 13, color: sub)),
+                      ),
+                    ],
+                  ),
+                ),
+              ] else ...<Widget>[
+                FilledButton.icon(
+                  onPressed: _importing ? null : _importWorld,
+                  icon: _importing
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.file_download_outlined, size: 18),
+                  label: Text(_importing ? '正在导入……' : '导入 .world 世界包'),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  '把朋友分享的 .world 文件导入后即可试玩；再导出时保留原作者声明，小说导入的世界不可导出。',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 12, height: 1.7, color: sub),
+                ),
+              ],
             ],
           );
         },

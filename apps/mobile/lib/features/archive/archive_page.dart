@@ -172,11 +172,13 @@ class _ArchivePageState extends ConsumerState<ArchivePage> {
                   ),
                 ),
               const SizedBox(height: 32),
-              OutlinedButton.icon(
-                onPressed: () => _shareLifeCard(archive),
-                icon: const Icon(Icons.ios_share_outlined, size: 18),
-                label: const Text('导出人生卡片'),
-              ),
+              // 青少年模式（合规 §5）：导出入口不可用
+              if (!ref.watch(teenModeProvider))
+                OutlinedButton.icon(
+                  onPressed: () => _shareLifeCard(archive),
+                  icon: const Icon(Icons.ios_share_outlined, size: 18),
+                  label: const Text('导出人生卡片'),
+                ),
               const SizedBox(height: 10),
               FilledButton(
                 onPressed: _branching ? null : _branchAndReplay,

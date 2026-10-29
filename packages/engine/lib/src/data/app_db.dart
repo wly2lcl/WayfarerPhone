@@ -175,6 +175,19 @@ class LocalEvents extends Table {
   IntColumn get createdAt => integer()();
 }
 
+/// 本地反馈/举报记录（合规与内容安全 §3.3：只写本机，不联网上报）
+class FeedbackRecords extends Table {
+  TextColumn get id => text()();
+  TextColumn get runId => text().nullable()();
+  TextColumn get category => text()();
+  TextColumn get detail => text()();
+  TextColumn get status => text().clientDefault(() => 'open')();
+  IntColumn get createdAt => integer()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(tables: [
   Worlds,
   WorldVersions,
@@ -187,12 +200,13 @@ class LocalEvents extends Table {
   ImportChunks,
   AppSettings,
   LocalEvents,
+  FeedbackRecords,
 ])
 class AppDb extends _$AppDb {
   AppDb(super.e);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -234,6 +248,10 @@ class AppDb extends _$AppDb {
             // v5：导入合成档位（快速/标准/忠实）
             await customStatement(
                 'ALTER TABLE import_jobs ADD COLUMN fidelity INTEGER NOT NULL DEFAULT 0');
+          }
+          if (from < 6) {
+            // v6：本地反馈/举报记录（WF-LAUNCH-02 反馈层）
+            await m.createTable(feedbackRecords);
           }
         },
         beforeOpen: (details) async {

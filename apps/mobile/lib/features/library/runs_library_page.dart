@@ -84,16 +84,18 @@ class _RunsLibraryPageState extends ConsumerState<RunsLibraryPage> {
       appBar: AppBar(
         title: const Text('我的局'),
         actions: <Widget>[
-          IconButton(
-            icon: _importing
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.file_download_outlined),
-            tooltip: '导入存档包',
-            onPressed: _importing ? null : _importRun,
-          ),
+          // 青少年模式（合规 §5）：导入入口不可用
+          if (!ref.watch(teenModeProvider))
+            IconButton(
+              icon: _importing
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.file_download_outlined),
+              tooltip: '导入存档包',
+              onPressed: _importing ? null : _importRun,
+            ),
         ],
       ),
       body: runs.when(
@@ -177,7 +179,9 @@ class _RunsLibraryPageState extends ConsumerState<RunsLibraryPage> {
                               ],
                             ),
                           ),
-                          if (!run.isTrial && run.exportable)
+                          if (!run.isTrial &&
+                              run.exportable &&
+                              !ref.watch(teenModeProvider))
                             TextButton(
                               onPressed: () => _exportRun(run),
                               child: const Text('导出'),
