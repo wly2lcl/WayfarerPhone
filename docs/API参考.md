@@ -1,8 +1,10 @@
 # API 参考 · 本地引擎与模型网关
 
-> 版本：v1.3（单机离线）
+> 版本：v1.4（单机离线）
 > 最后更新：2026-10-29
 > 上游：[技术方案](./技术方案.md) ｜ 相关：[Prompt 契约](./Prompt契约.md)
+>
+> v1.4 变更：首字统计限定成功正式局 narrator 的 `firstByteMs`；补充启动前冷启动清理、隐私版本确认、iOS 备份排除与本设备 Keychain；模型地址在保存与请求边界统一校验，远程仅 HTTPS、HTTP 仅精确本机地址，禁止自动重定向。
 >
 > v1.3 变更：`turns.run` 新增**中止语义**（停止生成，B6）——订阅 cancel 即向引擎传播中止，引擎在关键检查点（含 `commitTurn` 前最后防线）静默终止本回合；中止回合不落库、`turnNo` 不变、同一 `expectedTurn` 可重提，已发出请求的用量行保留（详见 §turns.run）。
 >
@@ -133,6 +135,10 @@ final engine = await Engine.open();
 ```
 
 首次启动时：建库 → 跑迁移 → 从 `assets/seed/cangwu/` 写入 `worlds` + `world_versions`（`source = 'builtin'`）。重复启动跳过种子写入。
+
+客户端在调用 `Engine.open` **之前**处理已确认的冷启动全清标记：清 Key、应用文档/临时/外部专属目录中的数据，全部成功才移除标记；失败不打开引擎。设置页只安排下次冷启动清理并锁定会话，不在仍有异步任务的当前引擎上删库。新数据库首次打开前清除旧安装可能残留的 Keychain 凭据。首次/告知版本变化时通过 `app_settings.privacy_notice_version` 记录显式同意，拒绝不进入业务；正式政策仍须法务确认。
+
+`Engine.usageStats()` 的 `p50Ms/p95Ms` 仅计算成功、非试玩、有 runId 的 narrator 请求的 `firstByteMs`，无有效样本返回 null，不用总耗时回填。该分位是叙事请求自身的首字，不是点击到首字的端到端耗时；其他用量聚合口径不变。
 
 ### worlds.list()
 
@@ -444,9 +450,12 @@ class TurnError        extends TurnEvent { final EngineCode code; final String m
 
 ### 5.5 Key 的边界
 
-- Key 只存在 `flutter_secure_storage`（iOS Keychain / Android Keystore），不写入 `app_settings`、不进日志、不进导出包、不随崩溃报告上报。
-- Key 只发往用户填写的 `baseUrl`；App 不代理、不中转、不落盘。
-- 设置页提供「清除 Key」与「重置全部设置」。
+- Key 只存在系统安全存储，不写入 `app_settings`，诊断和导出不主动读取；用户在反馈里自行填写敏感信息不受此保证。iOS 读写删均指定 `first_unlock_this_device`、`synchronizable: false`。
+- `ModelSettings.validateEndpointUrl()` 在保存设置时及网关读取 Key / 连接前校验：远程仅 HTTPS；HTTP 精确允许 `localhost`、`127.0.0.1`、`[::1]`，拒绝空 host、userinfo、伪装本机地址、非法 scheme 和端口。全空配置可保存为未配置状态。
+- `complete` / `stream` / `testConnection` 三个入口、三种协议共用校验。历史数据库中的非法地址也不能绕过；违反策略报不可重试的 `MODEL_NOT_CONFIGURED`，错误不回显 URL 凭据。
+- Key 只发往校验后的用户配置地址；所有 3xx 自动跳转关闭，提示填写最终地址，不向重定向目标转发鉴权头。App 不代理、不中转。
+- 设置页提供「清除 Key」；「数据管理 → 清空全部数据」安排冷启动清理，并非即时清空或独立的「重置全部设置」接口。
+- iOS 在 `Engine.open` 前由原生通道将 Documents / Application Support 排除系统备份，原生失败阻止启动且可重试；新库启动先清除卸载重装可能残留的旧 Keychain。
 
 ---
 
@@ -463,6 +472,7 @@ class TurnError        extends TurnEvent { final EngineCode code; final String m
 
 | 日期 | 变更 |
 | --- | --- |
+| 2026-10-29 | v1.4：明确隐私版本确认和冷启动全清边界；首字统计仅成功正式局 narrator 的 firstByteMs、无样本 null；网关 URL 校验、精确本机 HTTP 例外及禁止重定向；iOS 目录备份排除与本设备 Keychain；修正不存在的「重置全部设置」入口 |
 | 2026-10-29 | v1.3：`turns.run` 中止语义（停止生成，B6）——订阅 cancel 向引擎传播中止（分类/导演/旁白 delta/提取/commitTurn 前/随行问答 delta 六个检查点，`_TurnAborted` 静默终止不外发 `TurnError`）；中止回合不落库、`turnNo` 不变、同一 `expectedTurn` 可重提；UI「停止生成」按钮（submitting/streaming 显示，半截正文保留、空占位连同回合标题丢弃、恢复待选选项） |
 | 2026-10-29 | v1.2：数据卫生与重试修复——`runs.delete` 级联清理扩至 `usage_log`/`events_fts`，`library.delete` 同口径补 `usage_log`；门面清单新增 `settings.purgeExpiredUsageLog`（90 天滚动）；`listRuns` 终局标题仅解析落幕局涉及版本（消除 N+1）；§5.3 重试计时按单次尝试重置、429 `Retry-After` 用于退避；「我的局」新增单局删除按钮（二次确认） |
 | 2026-10-29 | v1.1：AI 标识收口与诊断/护栏补强——门面清单新增 `settings.clearDiagnostics` / `settings.purgeExpiredLocalEvents`，`exportDiagnostics` 注明自动保留最近 5 份；青少年模式护栏补第④项（`assistant` 自由问答拒绝）；游玩页页脚 AI 生成角标（WF-LAUNCH-03 四处齐备） |
