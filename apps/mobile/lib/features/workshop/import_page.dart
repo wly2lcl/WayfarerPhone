@@ -35,7 +35,9 @@ class _ImportWizardPageState extends ConsumerState<ImportWizardPage> {
 
   Future<void> _pick() async {
     final file = await openFile(
-      acceptedTypeGroups: const [XTypeGroup(label: '文本文件', extensions: ['txt'])],
+      acceptedTypeGroups: const [
+        XTypeGroup(label: '文本文件', extensions: ['txt']),
+      ],
     );
     if (file == null || !mounted) return;
     final fidelity = await _askFidelity(file.name);
@@ -56,8 +58,9 @@ class _ImportWizardPageState extends ConsumerState<ImportWizardPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Text(
-                  '「$name」\n\n确认你是该作品的作者，或已获得把作品导入本应用生成个人世界的授权。'
-                  '\n\n导入内容仅保存在本机、仅用于生成你自己的游玩世界，无法导出或分享。'),
+                '「$name」\n\n确认你是该作品的作者，或已获得把作品导入本应用生成个人世界的授权。'
+                '\n\n原文副本保存在本机，但抽取与合成会把小说原文分块、摘要发送给设置中的模型服务商，并产生模型费用。生成的世界及其存档无法导出或分享。',
+              ),
               const SizedBox(height: 12),
               Text('合成档位', style: Theme.of(ctx).textTheme.labelLarge),
               RadioGroup<ImportFidelity>(
@@ -68,22 +71,28 @@ class _ImportWizardPageState extends ConsumerState<ImportWizardPage> {
                     RadioListTile<ImportFidelity>(
                       value: ImportFidelity.fast,
                       title: Text('快速'),
-                      subtitle: Text('截断摘要，最快出世界；长篇后期剧情可能缺席',
-                          style: TextStyle(fontSize: 12)),
+                      subtitle: Text(
+                        '截断摘要，最快出世界；长篇后期剧情可能缺席',
+                        style: TextStyle(fontSize: 12),
+                      ),
                       dense: true,
                     ),
                     RadioListTile<ImportFidelity>(
                       value: ImportFidelity.standard,
                       title: Text('标准'),
-                      subtitle: Text('全书均匀采样，首尾与结局都参与生成',
-                          style: TextStyle(fontSize: 12)),
+                      subtitle: Text(
+                        '全书均匀采样，首尾与结局都参与生成',
+                        style: TextStyle(fontSize: 12),
+                      ),
                       dense: true,
                     ),
                     RadioListTile<ImportFidelity>(
                       value: ImportFidelity.faithful,
                       title: Text('忠实'),
-                      subtitle: Text('先把全书剧情压缩成卷级脉络再合成，最贴近原著走向',
-                          style: TextStyle(fontSize: 12)),
+                      subtitle: Text(
+                        '先把全书剧情压缩成卷级脉络再合成，最贴近原著走向',
+                        style: TextStyle(fontSize: 12),
+                      ),
                       dense: true,
                     ),
                   ],
@@ -93,11 +102,13 @@ class _ImportWizardPageState extends ConsumerState<ImportWizardPage> {
           ),
           actions: <Widget>[
             TextButton(
-                onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('取消')),
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('取消'),
+            ),
             FilledButton(
-                onPressed: () => Navigator.of(ctx).pop(true),
-                child: const Text('我确认，开始导入')),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('我确认，开始导入'),
+            ),
           ],
         ),
       ),
@@ -227,11 +238,13 @@ class _ImportWizardPageState extends ConsumerState<ImportWizardPage> {
           ),
           actions: <Widget>[
             TextButton(
-                onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('取消')),
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('取消'),
+            ),
             FilledButton(
-                onPressed: () => Navigator.of(ctx).pop(true),
-                child: const Text('重新生成')),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('重新生成'),
+            ),
           ],
         ),
       ),
@@ -255,8 +268,9 @@ class _ImportWizardPageState extends ConsumerState<ImportWizardPage> {
     if (j == null) return;
     final targets = entities.where((x) => x.key != e.key).toList();
     if (targets.isEmpty) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('没有可合并的目标')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('没有可合并的目标')));
       return;
     }
     final target = await showDialog<String>(
@@ -294,8 +308,10 @@ class _ImportWizardPageState extends ConsumerState<ImportWizardPage> {
           if (fatal != null)
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: Text(fatal!,
-                  style: TextStyle(fontSize: 13, color: theme.colorScheme.error)),
+              child: Text(
+                fatal!,
+                style: TextStyle(fontSize: 13, color: theme.colorScheme.error),
+              ),
             ),
           if (j == null) ..._intro(sub),
           if (j != null) ..._progress(j, sub),
@@ -305,35 +321,37 @@ class _ImportWizardPageState extends ConsumerState<ImportWizardPage> {
   }
 
   List<Widget> _intro(Color sub) => <Widget>[
-        PaperCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text('把一本小说 TXT 变成你的世界',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 10),
-              Text(
-                '引擎会分块读取全书，抽出人物、势力、事件与时间线，'
-                '合成为一份可玩的世界圣经；你可以审阅、合并或删除抽取结果。',
-                style: TextStyle(fontSize: 13, color: sub, height: 1.6),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                '· 仅支持 .txt，20 MB 以内，UTF-8 / GBK 自动识别\n'
-                '· 导入的世界只存在本机，永远不可导出\n'
-                '· 请确认你对作品拥有版权或授权',
-                style: TextStyle(fontSize: 12, color: sub, height: 1.8),
-              ),
-            ],
+    PaperCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            '把一本小说 TXT 变成你的世界',
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
           ),
-        ),
-        const SizedBox(height: 16),
-        FilledButton.icon(
-          onPressed: busy ? null : _pick,
-          icon: const Icon(Icons.upload_file_outlined),
-          label: Text(busy ? '解析中…' : '选择 TXT 文件'),
-        ),
-      ];
+          const SizedBox(height: 10),
+          Text(
+            '引擎会分块读取全书，抽出人物、势力、事件与时间线，'
+            '合成为一份可玩的世界圣经；你可以审阅、合并或删除抽取结果。',
+            style: TextStyle(fontSize: 13, color: sub, height: 1.6),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            '· 仅支持 .txt，20 MB 以内，UTF-8 / GBK 自动识别\n'
+            '· 导入的世界只存在本机，永远不可导出\n'
+            '· 请确认你对作品拥有版权或授权',
+            style: TextStyle(fontSize: 12, color: sub, height: 1.8),
+          ),
+        ],
+      ),
+    ),
+    const SizedBox(height: 16),
+    FilledButton.icon(
+      onPressed: busy ? null : _pick,
+      icon: const Icon(Icons.upload_file_outlined),
+      label: Text(busy ? '解析中…' : '选择 TXT 文件'),
+    ),
+  ];
 
   List<Widget> _progress(ImportJobView j, Color sub) {
     final stats = j.stats;
@@ -345,13 +363,20 @@ class _ImportWizardPageState extends ConsumerState<ImportWizardPage> {
             Row(
               children: <Widget>[
                 Expanded(
-                    child: Text(_stageLabel(j.stage),
-                        style: const TextStyle(
-                            fontSize: 15, fontWeight: FontWeight.w600))),
+                  child: Text(
+                    _stageLabel(j.stage),
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
                 if (stats != null)
-                  Text('第 ${stats.chapters} 章 · ${stats.chunks} 块 · '
-                      '${_fidelityLabel(j.fidelity)}',
-                      style: TextStyle(fontSize: 12, color: sub)),
+                  Text(
+                    '第 ${stats.chapters} 章 · ${stats.chunks} 块 · '
+                    '${_fidelityLabel(j.fidelity)}',
+                    style: TextStyle(fontSize: 12, color: sub),
+                  ),
               ],
             ),
             const SizedBox(height: 12),
@@ -370,10 +395,10 @@ class _ImportWizardPageState extends ConsumerState<ImportWizardPage> {
                 j.error != null
                     ? j.error!
                     : j.stage == 'merging'
-                        ? '正在归并实体…'
-                        : j.stage == 'compressing'
-                            ? '正在提炼全书脉络…'
-                            : '已抽取 ${j.done}/${j.total} 块（打断后会从断点续跑）',
+                    ? '正在归并实体…'
+                    : j.stage == 'compressing'
+                    ? '正在提炼全书脉络…'
+                    : '已抽取 ${j.done}/${j.total} 块（打断后会从断点续跑）',
                 style: TextStyle(fontSize: 12, color: sub),
               ),
               if (j.error != null) ...<Widget>[
@@ -381,12 +406,15 @@ class _ImportWizardPageState extends ConsumerState<ImportWizardPage> {
                 Row(
                   children: <Widget>[
                     OutlinedButton(
-                        onPressed: busy ? null : _resume, child: const Text('续跑')),
+                      onPressed: busy ? null : _resume,
+                      child: const Text('续跑'),
+                    ),
                     const SizedBox(width: 12),
                     if (j.entitiesTotal > 0)
                       OutlinedButton(
-                          onPressed: busy ? null : _regenerate,
-                          child: const Text('重新生成世界')),
+                        onPressed: busy ? null : _regenerate,
+                        child: const Text('重新生成世界'),
+                      ),
                   ],
                 ),
               ],
@@ -405,8 +433,7 @@ class _ImportWizardPageState extends ConsumerState<ImportWizardPage> {
         children: <Widget>[
           PaperBadge(label: '实体审阅'),
           const SizedBox(width: 10),
-          Text('采纳率 $kept/$total',
-              style: TextStyle(fontSize: 12, color: sub)),
+          Text('采纳率 $kept/$total', style: TextStyle(fontSize: 12, color: sub)),
           const Spacer(),
           if (j.draftId != null)
             FilledButton.tonal(
@@ -445,30 +472,30 @@ class _ImportWizardPageState extends ConsumerState<ImportWizardPage> {
 }
 
 String _stageLabel(String stage) => switch (stage) {
-      'queued' => '排队中',
-      'parsing' => '解析正文',
-      'extracting' => '分块抽取中',
-      'merging' => '归并实体',
-      'compressing' => '提炼全书脉络',
-      'review' => '导入完成，世界已生成',
-      'failed' => '导入失败',
-      _ => stage,
-    };
+  'queued' => '排队中',
+  'parsing' => '解析正文',
+  'extracting' => '分块抽取中',
+  'merging' => '归并实体',
+  'compressing' => '提炼全书脉络',
+  'review' => '导入完成，世界已生成',
+  'failed' => '导入失败',
+  _ => stage,
+};
 
 String _fidelityLabel(ImportFidelity f) => switch (f) {
-      ImportFidelity.fast => '快速',
-      ImportFidelity.standard => '标准',
-      ImportFidelity.faithful => '忠实',
-    };
+  ImportFidelity.fast => '快速',
+  ImportFidelity.standard => '标准',
+  ImportFidelity.faithful => '忠实',
+};
 
 String _entityTypeLabel(String type) => switch (type) {
-      'character' => '人物',
-      'place' => '地点',
-      'faction' => '势力',
-      'item' => '物品',
-      'event' => '事件',
-      _ => type,
-    };
+  'character' => '人物',
+  'place' => '地点',
+  'faction' => '势力',
+  'item' => '物品',
+  'event' => '事件',
+  _ => type,
+};
 
 class _EntityRow extends StatelessWidget {
   const _EntityRow({
@@ -500,20 +527,28 @@ class _EntityRow extends StatelessWidget {
                 Row(
                   children: <Widget>[
                     Flexible(
-                      child: Text(entity.key,
-                          style: const TextStyle(
-                              fontSize: 14, fontWeight: FontWeight.w600),
-                          overflow: TextOverflow.ellipsis),
+                      child: Text(
+                        entity.key,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                     const SizedBox(width: 8),
                     PaperBadge(label: _entityTypeLabel(entity.type)),
                     const SizedBox(width: 8),
-                    Text('×${entity.frequency}',
-                        style: TextStyle(fontSize: 12, color: sub)),
+                    Text(
+                      '×${entity.frequency}',
+                      style: TextStyle(fontSize: 12, color: sub),
+                    ),
                     if (entity.firstChapter > 0) ...<Widget>[
                       const SizedBox(width: 8),
-                      Text('第${entity.firstChapter}章',
-                          style: TextStyle(fontSize: 12, color: sub)),
+                      Text(
+                        '第${entity.firstChapter}章',
+                        style: TextStyle(fontSize: 12, color: sub),
+                      ),
                     ],
                   ],
                 ),
@@ -521,7 +556,8 @@ class _EntityRow extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     <String>[
-                      if (entity.aliases.isNotEmpty) '别名：${entity.aliases.join('、')}',
+                      if (entity.aliases.isNotEmpty)
+                        '别名：${entity.aliases.join('、')}',
                       if (attrs.isNotEmpty) attrs,
                     ].join(' · '),
                     style: TextStyle(fontSize: 12, color: sub),

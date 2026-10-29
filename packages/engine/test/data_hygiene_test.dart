@@ -253,6 +253,114 @@ void main() {
     });
   });
 
+  group('usageStats：正式局叙事请求首字耗时（非点击到首字 E2E）', () {
+    late Engine engine;
+    late Directory tmp;
+
+    setUp(() async {
+      tmp = await Directory.systemTemp.createTemp('wf_hygiene_stats');
+      engine = await Engine.open(
+        dbPath: '${tmp.path}/app.db',
+        keyStore: InMemoryKeyStore(),
+        random: SeqRandom([1]),
+      );
+      for (final isTrial in [false, true]) {
+        await RunsDao(engine.db).createRun(
+          runId: isTrial ? 'r_trial' : 'r_normal',
+          worldId: 'w_any',
+          worldVersion: 1,
+          identityId: 'id_x',
+          initialState: makeState(),
+          isTrial: isTrial,
+        );
+      }
+    });
+
+    tearDown(() async {
+      await engine.close();
+      await tmp.delete(recursive: true);
+    });
+
+    Future<void> usage({
+      String? runId = 'r_normal',
+      int? turnNo = 1,
+      String role = 'narrator',
+      int? firstByteMs,
+      bool ok = true,
+      int daysAgo = 0,
+    }) async {
+      await engine.db.into(engine.db.usageLog).insert(
+            UsageLogCompanion.insert(
+              runId: Value(runId),
+              turnNo: Value(turnNo),
+              role: role,
+              model: 'm',
+              tokensIn: 10,
+              tokensOut: 5,
+              ms: 100000,
+              firstByteMs: Value(firstByteMs),
+              ok: Value(ok),
+              createdAt:
+                  DateTime.now().millisecondsSinceEpoch - daysAgo * 86400000,
+            ),
+          );
+    }
+
+    Future<void> insertExcludedLatencies() async {
+      for (final role in ['classifier', 'director', 'extractor', 'companion']) {
+        await usage(role: role, firstByteMs: 1);
+      }
+      // 即便探活使用 narrator 且有首字，也不能算作正式叙事。
+      await usage(runId: null, turnNo: null, firstByteMs: 90000);
+      await usage(turnNo: 5, ok: false, firstByteMs: 80000);
+      await usage(turnNo: 6); // 无首字，不能用总耗时 ms 回填。
+      await usage(runId: 'r_trial', firstByteMs: 70000);
+      await usage(firstByteMs: 60000, daysAgo: 31);
+    }
+
+    test('混合请求不污染首字分位数，其他统计保留原口径', () async {
+      // 故意乱序，确保按首字耗时排序；ms 与 firstByteMs 明显不同。
+      final firstBytes = [500, 100, 300, 200, 400];
+      for (var i = 0; i < firstBytes.length; i++) {
+        await usage(turnNo: i, firstByteMs: firstBytes[i]);
+      }
+      await insertExcludedLatencies();
+
+      final s = await engine.usageStats();
+      expect(s.p50Ms, 300);
+      expect(s.p95Ms, 500);
+      expect(s.days, 30);
+      // 五条正式叙事 + 四种其他角色 + 探活 + 失败 + 无首字。
+      expect(s.requests, 12);
+      expect(s.failures, 1);
+      expect(s.tokensIn, 110, reason: '仅成功请求计入 tokens，仍包含其他角色和探活');
+      expect(s.tokensOut, 55);
+      expect(s.turns, 7, reason: '按 runId/turnNo 去重，失败和无首字回合仍计入');
+      expect(s.avgTokensPerTurn, 24);
+    });
+
+    test('有请求但无有效叙事首字样本时分位数为 null', () async {
+      await insertExcludedLatencies();
+
+      final s = await engine.usageStats();
+      expect(s.requests, 7);
+      expect(s.failures, 1);
+      expect(s.p50Ms, isNull);
+      expect(s.p95Ms, isNull);
+    });
+
+    test('无请求时分位数为 null', () async {
+      final s = await engine.usageStats();
+      expect(s.requests, 0);
+      expect(s.p50Ms, isNull);
+      expect(s.p95Ms, isNull);
+      expect(s.tokensIn, 0);
+      expect(s.tokensOut, 0);
+      expect(s.turns, 0);
+      expect(s.avgTokensPerTurn, 0);
+    });
+  });
+
   group('数据卫生：世界级联删除也清理 usage_log', () {
     test('library.delete(worldId) 后该世界各局的用量行清零', () async {
       final tmp = await Directory.systemTemp.createTemp('wf_hygiene_world');

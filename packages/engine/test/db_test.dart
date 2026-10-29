@@ -293,7 +293,7 @@ void main() {
       final st = await e.usageStats(days: 30);
       expect(st.requests, 4);
       expect(st.failures, 1);
-      expect(st.p50Ms, 150); // 样本 [100, 200, 150] 中位
+      expect(st.p50Ms, 200); // 有效首字仅 [100, 200]，不以总耗时 150 回填。
       expect(st.p95Ms, 200);
       expect(st.tokensIn, 250);
       expect(st.tokensOut, 650);

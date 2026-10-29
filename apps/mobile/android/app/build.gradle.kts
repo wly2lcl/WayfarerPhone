@@ -4,6 +4,56 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// QA is opt-in and must never produce a production/profile artifact.
+val wayfarerQa = providers.gradleProperty("wayfarerQa").map {
+    it.toBooleanStrictOrNull()
+        ?: throw GradleException("wayfarerQa must be true or false (debug builds only).")
+}.getOrElse(false)
+
+// Do not load key.properties or fall back to the debug keystore.
+val signingEnvironment = listOf(
+    "WF_ANDROID_STORE_FILE",
+    "WF_ANDROID_STORE_PASSWORD",
+    "WF_ANDROID_KEY_ALIAS",
+    "WF_ANDROID_KEY_PASSWORD",
+).associateWith { providers.environmentVariable(it).orNull }
+val missingSigningVariables = signingEnvironment.filterValues { it.isNullOrBlank() }.keys
+
+val validateWayfarerBuildMode = tasks.register("validateWayfarerBuildMode") {
+    doLast {
+        if (wayfarerQa) {
+            throw GradleException(
+                "wayfarerQa=true is debug-only. Remove -PwayfarerQa=true for release/profile builds.",
+            )
+        }
+    }
+}
+val validateWayfarerSigning = tasks.register("validateWayfarerSigning") {
+    dependsOn(validateWayfarerBuildMode)
+    doLast {
+        if (missingSigningVariables.isNotEmpty()) {
+            throw GradleException(
+                "Android release signing is required. Set non-blank environment variables: " +
+                    missingSigningVariables.joinToString(", ") +
+                    ". Debug signing fallback is disabled.",
+            )
+        }
+    }
+}
+
+// Validate actual variant tasks even for abbreviated, aggregate, or up-to-date builds.
+tasks.configureEach {
+    if (name.contains("Release", ignoreCase = true)) {
+        dependsOn(validateWayfarerSigning)
+    } else if (
+        name.contains("Profile", ignoreCase = true) &&
+        !name.contains("Debug", ignoreCase = true)
+    ) {
+        // Debug ART-profile tasks are still debug tasks, not Flutter profile builds.
+        dependsOn(validateWayfarerBuildMode)
+    }
+}
+
 android {
     namespace = "dev.wayfarer.mobile"
     compileSdk = flutter.compileSdkVersion
@@ -25,11 +75,25 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (missingSigningVariables.isEmpty()) {
+            create("release") {
+                storeFile = file(signingEnvironment.getValue("WF_ANDROID_STORE_FILE")!!)
+                storePassword = signingEnvironment.getValue("WF_ANDROID_STORE_PASSWORD")
+                keyAlias = signingEnvironment.getValue("WF_ANDROID_KEY_ALIAS")
+                keyPassword = signingEnvironment.getValue("WF_ANDROID_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            if (wayfarerQa) {
+                applicationIdSuffix = ".qa"
+            }
+        }
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 }

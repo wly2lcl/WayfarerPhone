@@ -7,7 +7,7 @@ import 'dart:io';
 
 Future<void> main(List<String> args) async {
   final port = args.isEmpty ? 8899 : int.parse(args[0]);
-  final server = await HttpServer.bind(InternetAddress.anyIPv4, port);
+  final server = await HttpServer.bind(InternetAddress.loopbackIPv4, port);
   stdout.writeln('fake llm on :$port');
   await for (final req in server) {
     if (req.method == 'GET') {

@@ -27,6 +27,26 @@ class _RunsLibraryPageState extends ConsumerState<RunsLibraryPage> {
   bool _importing = false;
 
   Future<void> _exportRun(RunHead run) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('导出这局存档？'),
+        content: const Text(
+          '存档包含剧情正文、你的输入与选择、角色状态。请确认没有不希望分享的内容，并妥善保管文件；已分享的副本无法通过本机清理撤回。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('确认导出'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
     final engine = ref.read(engineProvider);
     final messenger = ScaffoldMessenger.of(context);
     try {

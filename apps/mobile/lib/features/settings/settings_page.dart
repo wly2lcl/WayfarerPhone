@@ -1,11 +1,11 @@
 import 'package:engine/engine.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../app/providers.dart';
 import '../../core/engine_errors.dart';
-import '../../core/security/secure_key_store.dart';
 import '../../core/ui/paper.dart';
 
 /// 设置页：预设 / 协议 / baseUrl / Key / 两个模型 / 测试连接 / 夜读模式
@@ -41,9 +41,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     _narrativeModel = TextEditingController(text: settings.narrativeModel);
     _smallModel = TextEditingController(text: settings.smallModel);
     _price = TextEditingController(
-        text: settings.pricePerMillion > 0
-            ? settings.pricePerMillion.toString()
-            : '');
+      text: settings.pricePerMillion > 0
+          ? settings.pricePerMillion.toString()
+          : '',
+    );
     _presetId = _matchPreset(settings).id;
     _loadKeyState();
     _loadStats();
@@ -71,7 +72,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Future<void> _loadKeyState() async {
-    final has = await SecureKeyStore().read() != null;
+    final has = await ref.read(engineProvider).keyStore.read() != null;
     if (!mounted) return;
     setState(() => _keySaved = has);
   }
@@ -100,19 +101,19 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   ModelSettings _settingsFromFields() => ModelSettings(
-        protocol: _protocol,
-        baseUrl: _baseUrl.text.trim(),
-        narrativeModel: _narrativeModel.text.trim(),
-        smallModel: _smallModel.text.trim(),
-        pricePerMillion: double.tryParse(_price.text.trim()) ?? 0,
-      );
+    protocol: _protocol,
+    baseUrl: _baseUrl.text.trim(),
+    narrativeModel: _narrativeModel.text.trim(),
+    smallModel: _smallModel.text.trim(),
+    pricePerMillion: double.tryParse(_price.text.trim()) ?? 0,
+  );
 
   Future<void> _persist() async {
     final engine = ref.read(engineProvider);
     await engine.saveModelSettings(_settingsFromFields());
     final key = _key.text.trim();
     if (key.isNotEmpty) {
-      await SecureKeyStore().write(key);
+      await ref.read(engineProvider).keyStore.write(key);
       if (!mounted) return;
       setState(() {
         _key.clear();
@@ -130,12 +131,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     try {
       await _persist();
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('已保存')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('已保存')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('保存失败：$e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('保存失败：$e')));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -151,12 +154,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           .submitFeedback(category: '反馈', detail: detail);
       if (!mounted) return;
       _feedback.clear();
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('已记录（仅保存在本机，可随诊断包发出）')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('已记录（仅保存在本机，可随诊断包发出）')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('记录失败：$e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('记录失败：$e')));
     }
   }
 
@@ -167,16 +172,20 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(on ? '开启青少年模式？' : '关闭青少年模式？'),
-        content: Text(on
-            ? '开启后：关闭 .world / .run / 小说导入与所有导出入口，游玩中只能使用选项推进，不能自由输入。'
-            : '关闭后将恢复导入、导出与自由输入。请确认使用者已满 18 周岁。'),
+        content: Text(
+          on
+              ? '开启后：关闭 .world / .run / 小说导入与所有导出入口，游玩中只能使用选项推进，不能自由输入。'
+              : '关闭后将恢复导入、导出与自由输入。请确认使用者已满 18 周岁。',
+        ),
         actions: <Widget>[
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('取消')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(on ? '开启' : '关闭')),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(on ? '开启' : '关闭'),
+          ),
         ],
       ),
     );
@@ -185,12 +194,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       await ref.read(engineProvider).setTeenMode(on);
       ref.read(teenModeProvider.notifier).state = on;
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(on ? '已开启青少年模式' : '已关闭青少年模式')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(on ? '已开启青少年模式' : '已关闭青少年模式')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('操作失败：$e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('操作失败：$e')));
     }
   }
 
@@ -198,10 +209,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   Future<void> _clearDiagnostics() async {
     final messenger = ScaffoldMessenger.of(context);
     try {
-      final removed =
-          await ref.read(engineProvider).clearDiagnostics(keep: 0);
-      messenger.showSnackBar(SnackBar(
-          content: Text(removed == 0 ? '没有可清除的诊断文件' : '已清除 $removed 个诊断文件')));
+      final removed = await ref.read(engineProvider).clearDiagnostics(keep: 0);
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(removed == 0 ? '没有可清除的诊断文件' : '已清除 $removed 个诊断文件'),
+        ),
+      );
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('操作失败：$e')));
     }
@@ -211,16 +224,39 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   /// 包含模型配置（不含 Key）、用量统计、结构与计数、反馈记录与近 7 天埋点；
   /// 不含叙事正文与状态快照。
   Future<void> _exportDiagnostics() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('分享诊断与反馈？'),
+        content: const Text(
+          '文件含服务地址、模型配置、用量、反馈原文和近期事件。不会主动读取 API Key 或附带完整剧情，但请先检查反馈中是否手动写入了敏感内容。\n\n只打开系统分享面板，不会自动发送给开发者；当前测试版尚未配置官方支持渠道。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('继续分享'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
     final messenger = ScaffoldMessenger.of(context);
     try {
       final path = await ref.read(engineProvider).exportDiagnostics();
-      await SharePlus.instance.share(ShareParams(
-        files: [XFile(path, name: path.split('/').last)],
-        title: '远行诊断包',
-      ));
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(path, name: path.split('/').last)],
+          title: '远行诊断包',
+        ),
+      );
     } on EngineException catch (e) {
       messenger.showSnackBar(
-          SnackBar(content: Text('${engineCodeLabel(e.code)}：${e.message}')));
+        SnackBar(content: Text('${engineCodeLabel(e.code)}：${e.message}')),
+      );
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('导出失败：$e')));
     }
@@ -240,16 +276,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       setState(() {
         _testResult = report.ok
             ? '连接成功 · ${report.latencyMs ?? '-'}ms'
-                '${report.model == null ? '' : ' · ${report.model}'}'
+                  '${report.model == null ? '' : ' · ${report.model}'}'
             : '连接失败 · '
-                '${report.errorCode == null ? '' : '${engineCodeLabel(report.errorCode!)}：'}'
-                '${report.message ?? '未知错误'}';
+                  '${report.errorCode == null ? '' : '${engineCodeLabel(report.errorCode!)}：'}'
+                  '${report.message ?? '未知错误'}';
       });
     } on EngineException catch (e) {
       if (!mounted) return;
       setState(() {
-        _testResult =
-            '连接失败 · ${engineCodeLabel(e.code)}：${e.message}';
+        _testResult = '连接失败 · ${engineCodeLabel(e.code)}：${e.message}';
       });
     } catch (e) {
       if (!mounted) return;
@@ -260,14 +295,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Future<void> _clearKey() async {
-    await SecureKeyStore().clear();
+    await ref.read(engineProvider).keyStore.clear();
     if (!mounted) return;
     setState(() {
       _key.clear();
       _keySaved = false;
     });
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('已清除本机密钥')));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('已清除本机密钥')));
   }
 
   /// 用量统计区（工程与开发计划 §9）：近 30 天请求、首字分位、单回合 token、估算花费
@@ -296,8 +332,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
           const SizedBox(height: 4),
           Text(
-            '首字 p50 ${ms(st.p50Ms)} · p95 ${ms(st.p95Ms)}',
+            '叙事请求首字 p50 ${ms(st.p50Ms)} · p95 ${ms(st.p95Ms)}',
             style: TextStyle(fontSize: 13, color: sub),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '仅统计成功的正式局叙事请求，不含点击后分类、导演等前置等待；无样本显示 —。',
+            style: TextStyle(fontSize: 12, color: sub),
           ),
           const SizedBox(height: 4),
           Text(
@@ -330,8 +371,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('夜读模式', style: TextStyle(fontSize: 15)),
-            subtitle: Text('暖黑底、暖黄字，适合夜里阅读。',
-                style: TextStyle(fontSize: 12, color: sub)),
+            subtitle: Text(
+              '暖黑底、暖黄字，适合夜里阅读。',
+              style: TextStyle(fontSize: 12, color: sub),
+            ),
             value: ref.watch(nightModeProvider),
             onChanged: (v) => ref.read(nightModeProvider.notifier).state = v,
           ),
@@ -339,10 +382,25 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             contentPadding: EdgeInsets.zero,
             title: const Text('青少年模式', style: TextStyle(fontSize: 15)),
             subtitle: Text(
-                '未成年人保护：开启后导入/导出入口关闭，游玩仅能使用选项推进。',
-                style: TextStyle(fontSize: 12, color: sub)),
+              '未成年人保护：开启后导入/导出入口关闭，游玩仅能使用选项推进。',
+              style: TextStyle(fontSize: 12, color: sub),
+            ),
             value: ref.watch(teenModeProvider),
             onChanged: _toggleTeenMode,
+          ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('隐私与使用须知'),
+            subtitle: const Text('模型请求的数据流向、版权与留存说明'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/privacy'),
+          ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('数据管理'),
+            subtitle: const Text('导出世界与存档、清空全部本机数据'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: _saving || _testing ? null : () => context.push('/data'),
           ),
           const SizedBox(height: 18),
           PaperSectionLabel('供应商预设'),
@@ -370,23 +428,25 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           const SizedBox(height: 8),
           SegmentedButton<LlmProtocol>(
             selected: <LlmProtocol>{_protocol},
-            onSelectionChanged: (set) =>
-                setState(() => _protocol = set.first),
+            onSelectionChanged: (set) => setState(() => _protocol = set.first),
             showSelectedIcon: false,
             segments: const <ButtonSegment<LlmProtocol>>[
               ButtonSegment<LlmProtocol>(
-                  value: LlmProtocol.openai_chat, label: Text('Chat')),
+                value: LlmProtocol.openai_chat,
+                label: Text('Chat'),
+              ),
               ButtonSegment<LlmProtocol>(
-                  value: LlmProtocol.openai_responses,
-                  label: Text('Responses')),
+                value: LlmProtocol.openai_responses,
+                label: Text('Responses'),
+              ),
               ButtonSegment<LlmProtocol>(
-                  value: LlmProtocol.anthropic_messages,
-                  label: Text('Anthropic')),
+                value: LlmProtocol.anthropic_messages,
+                label: Text('Anthropic'),
+              ),
             ],
           ),
           const SizedBox(height: 4),
-          Text('决定请求格式，需与你的服务商一致。',
-              style: TextStyle(fontSize: 12, color: sub)),
+          Text('决定请求格式，需与你的服务商一致。', style: TextStyle(fontSize: 12, color: sub)),
           const SizedBox(height: 18),
           PaperSectionLabel('服务地址'),
           const SizedBox(height: 8),
@@ -394,8 +454,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             controller: _baseUrl,
             keyboardType: TextInputType.url,
             style: const TextStyle(fontSize: 14),
-            decoration:
-                paperInputDecoration(context, 'baseUrl', hint: 'https://…/v1'),
+            decoration: paperInputDecoration(
+              context,
+              'baseUrl',
+              hint: 'https://…/v1',
+            ),
           ),
           const SizedBox(height: 18),
           PaperSectionLabel('API Key'),
@@ -425,24 +488,28 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           TextField(
             controller: _narrativeModel,
             style: const TextStyle(fontSize: 14),
-            decoration: paperInputDecoration(context, '叙事模型',
-                hint: '正文与助手用，如 deepseek-chat'),
+            decoration: paperInputDecoration(
+              context,
+              '叙事模型',
+              hint: '正文与助手用，如 deepseek-chat',
+            ),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _smallModel,
             style: const TextStyle(fontSize: 14),
-            decoration: paperInputDecoration(context, '小模型',
-                hint: '分类、导演与抽取用'),
+            decoration: paperInputDecoration(context, '小模型', hint: '分类、导演与抽取用'),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _price,
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             style: const TextStyle(fontSize: 14),
-            decoration: paperInputDecoration(context, '单价（元 / 百万 token）',
-                hint: '用于估算花费，留空则不显示'),
+            decoration: paperInputDecoration(
+              context,
+              '单价（元 / 百万 token）',
+              hint: '用于估算花费，留空则不显示',
+            ),
           ),
           const SizedBox(height: 24),
           _buildUsageSection(theme, sub),
@@ -450,13 +517,21 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           // 反馈层（合规与内容安全 §3.3）：只写本地记录，不联网上报
           PaperSectionLabel('反馈与举报'),
           const SizedBox(height: 8),
+          Text(
+            '记录仅保存在本机，不代表开发者已收到。可在下方主动分享诊断包；请勿填写 Key 或个人敏感信息。官方支持渠道待发布前确认。',
+            style: TextStyle(fontSize: 12, height: 1.6, color: sub),
+          ),
+          const SizedBox(height: 8),
           TextField(
             controller: _feedback,
             minLines: 2,
             maxLines: 4,
             style: const TextStyle(fontSize: 14),
-            decoration: paperInputDecoration(context, '问题或违规内容描述',
-                hint: '描述问题或粘贴越界内容；仅保存在本机'),
+            decoration: paperInputDecoration(
+              context,
+              '问题或违规内容描述',
+              hint: '描述问题或粘贴越界内容；仅保存在本机',
+            ),
           ),
           const SizedBox(height: 8),
           Align(
@@ -472,7 +547,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           PaperSectionLabel('诊断'),
           const SizedBox(height: 8),
           Text(
-            '生成脱敏诊断文件：模型配置（不含 Key）、用量统计、数据计数、反馈记录与近 7 天埋点。不含叙事正文。',
+            '生成本地诊断文件：模型配置、用量统计、数据计数、反馈原文与近 7 天事件。不主动读取 Key 或附带完整剧情；手动填入的敏感信息仍可能出现在反馈中。',
             style: TextStyle(fontSize: 12, color: sub),
           ),
           const SizedBox(height: 8),
@@ -519,8 +594,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               style: TextStyle(
                 fontSize: 13,
                 height: 1.6,
-                color:
-                    _testResult!.startsWith('连接成功') ? sub : theme.colorScheme.primary,
+                color: _testResult!.startsWith('连接成功')
+                    ? sub
+                    : theme.colorScheme.primary,
               ),
             ),
           ],

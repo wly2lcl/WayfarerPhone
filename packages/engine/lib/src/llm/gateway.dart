@@ -248,13 +248,14 @@ class ModelGateway {
     String model,
     GatewayRequest req,
   ) async* {
+    final baseUrl = ModelSettings.validateEndpointUrl(settings.baseUrl).toString();
     final adapter = adapterFor(settings.protocol);
     final key = await config.keyStore.read() ?? '';
     if (key.isEmpty) {
       throw EngineException(EngineCode.modelNotConfigured, '未填写 Key');
     }
     final spec = adapter.buildRequest(
-      baseUrl: settings.baseUrl,
+      baseUrl: baseUrl,
       apiKey: key,
       model: model,
       system: req.system,
@@ -263,13 +264,15 @@ class ModelGateway {
       temperature: req.temperature,
       maxTokens: req.maxTokens,
     );
+    final uri = ModelSettings.validateEndpointUrl(spec.url);
 
     HttpClientRequest request;
     try {
-      request = await _client.postUrl(Uri.parse(spec.url));
-    } catch (e) {
-      throw EngineException(EngineCode.modelNetwork, '无法连接模型服务：$e', canRetry: true);
+      request = await _client.postUrl(uri);
+    } catch (_) {
+      throw EngineException(EngineCode.modelNetwork, '无法连接模型服务', canRetry: true);
     }
+    request.followRedirects = false;
     spec.headers.forEach(request.headers.set);
     request.add(utf8.encode(jsonEncode(spec.body)));
 
@@ -279,10 +282,15 @@ class ModelGateway {
       response = await request.close().timeout(const Duration(seconds: 60));
     } on TimeoutException {
       throw EngineException(EngineCode.modelTimeout, '首字超时', canRetry: true);
-    } catch (e) {
-      throw EngineException(EngineCode.modelNetwork, '网络错误：$e', canRetry: true);
+    } catch (_) {
+      throw EngineException(EngineCode.modelNetwork, '网络错误', canRetry: true);
     }
 
+    if (response.statusCode >= 300 && response.statusCode < 400) {
+      await response.drain<void>();
+      throw EngineException(EngineCode.modelNotConfigured,
+          '已阻止模型服务重定向，请在设置页填写最终 HTTPS 地址（本机 loopback 可用 HTTP）');
+    }
     if (response.statusCode != 200) {
       final body = await response.transform(utf8.decoder).join();
       final retryAfter = response.headers.value('retry-after');
@@ -312,8 +320,8 @@ class ModelGateway {
       }
     } on EngineException {
       rethrow;
-    } catch (e) {
-      throw EngineException(EngineCode.modelNetwork, '流读取失败：$e', canRetry: true);
+    } catch (_) {
+      throw EngineException(EngineCode.modelNetwork, '流读取失败', canRetry: true);
     }
   }
 

@@ -1,3 +1,5 @@
+import '../errors.dart';
+
 enum LlmProtocol { openai_chat, openai_responses, anthropic_messages }
 
 enum GatewayRole {
@@ -37,6 +39,36 @@ class ModelSettings {
 
   String modelFor(GatewayRole role) =>
       role.wantsNarrativeModel ? narrativeModel : smallModel;
+
+  static Uri validateEndpointUrl(String url) {
+    try {
+      final uri = Uri.parse(url);
+      final authority = RegExp(r'^https?://([^/?#]+)', caseSensitive: false)
+          .firstMatch(url)
+          ?.group(1);
+      final loopback = RegExp(
+        r'^(localhost|127\.0\.0\.1|\[::1\])(?::[0-9]+)?$',
+        caseSensitive: false,
+      ).hasMatch(authority ?? '');
+      if (authority != null &&
+          !RegExp(r'[@%\s\\]').hasMatch(authority) &&
+          !RegExp(r'[\s\\]').hasMatch(url) &&
+          uri.hasAuthority &&
+          uri.host.isNotEmpty &&
+          uri.userInfo.isEmpty &&
+          uri.port > 0 &&
+          uri.port <= 65535 &&
+          (uri.scheme == 'https' || (uri.scheme == 'http' && loopback))) {
+        return uri;
+      }
+    } on FormatException {
+      // 不回显解析异常，其中可能包含 URL 凭据。
+    }
+    throw EngineException(
+      EngineCode.modelNotConfigured,
+      '模型地址无效：请填写不含用户信息的 HTTPS URL；HTTP 仅允许 localhost、127.0.0.1 或 [::1] 本机地址',
+    );
+  }
 
   Map<String, Object?> toJson() => {
         'protocol': protocol.name,

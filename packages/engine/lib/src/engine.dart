@@ -272,8 +272,15 @@ class Engine {
         .where((r) => r.runId == null || !trialIds.contains(r.runId))
         .toList();
     final okRows = rows.where((r) => r.ok).toList();
-    final latencies =
-        okRows.map((r) => r.firstByteMs ?? r.ms).toList()..sort();
+    // 仅正式局叙事请求自身的首字耗时；不是用户点击到首字的端到端耗时。
+    final latencies = okRows
+        .where((r) =>
+            r.runId != null &&
+            r.role == GatewayRole.narrator.name &&
+            r.firstByteMs != null)
+        .map((r) => r.firstByteMs!)
+        .toList()
+      ..sort();
     int? pct(double p) => latencies.isEmpty
         ? null
         : latencies[(p * (latencies.length - 1)).round()];
@@ -307,6 +314,11 @@ class Engine {
   }
 
   Future<void> saveModelSettings(ModelSettings s) async {
+    if (s.baseUrl.isNotEmpty ||
+        s.narrativeModel.isNotEmpty ||
+        s.smallModel.isNotEmpty) {
+      ModelSettings.validateEndpointUrl(s.baseUrl);
+    }
     _holder.current = s;
     await db.into(db.appSettings).insertOnConflictUpdate(AppSettingsCompanion.insert(
           key: 'model_settings',

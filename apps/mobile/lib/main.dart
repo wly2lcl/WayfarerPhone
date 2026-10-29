@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:contracts/contracts.dart';
 import 'package:engine/engine.dart';
@@ -10,12 +11,18 @@ import 'package:path_provider/path_provider.dart';
 import 'app/providers.dart';
 import 'app/router.dart';
 import 'app/theme.dart';
+import 'core/security/local_data_reset.dart';
 import 'core/security/secure_key_store.dart';
+import 'features/settings/privacy_page.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const BootstrapApp());
 }
+
+Future<void> excludeIosDataFromBackup() => const MethodChannel(
+  'wayfarer/local_data',
+).invokeMethod<void>('excludeFromBackup');
 
 /// 启动引导：初始化期间显示纸质底色的启动页，完成后注入引擎。
 class BootstrapApp extends StatefulWidget {
@@ -28,6 +35,10 @@ class BootstrapApp extends StatefulWidget {
 class _BootstrapAppState extends State<BootstrapApp> {
   Engine? _engine;
   Object? _error;
+  LocalDataReset? _dataReset;
+  bool _privacyAccepted = false;
+  bool _privacyDeclined = false;
+  bool _resetRequested = false;
 
   /// 年龄门（合规与内容安全 §5，TODO WF-LAUNCH-04）：
   /// null = 首次启动待确认；'adult' = 已满 18；'teen' = 未满 18，进青少年模式
@@ -45,24 +56,40 @@ class _BootstrapAppState extends State<BootstrapApp> {
       _error = null;
       _ageGate = null;
     });
+    Engine? opened;
     try {
+      if (Platform.isIOS) await excludeIosDataFromBackup();
       final docs = await getApplicationDocumentsDirectory();
+      final support = await getApplicationSupportDirectory();
+      final temp = await getTemporaryDirectory();
       final dbPath = '${docs.path}/wayfarer.db';
       final keyStore = SecureKeyStore();
-
-      // 导出的 .world/.run 包放应用外部专属目录：文件管理器可浏览、可分享，
-      // 私有 docs 目录对文件 App 不可见
-      final ext = await getExternalStorageDirectory();
+      final ext = Platform.isAndroid
+          ? await getExternalStorageDirectory()
+          : null;
       final filesDir = ext?.path ?? docs.path;
+      _dataReset = LocalDataReset(
+        marker: File('${support.path}/wayfarer_reset_pending'),
+        dataDirectories: [docs, temp, if (ext != null) ext],
+        keyStore: keyStore,
+      );
+      // 冷启动先清理，旧进程的异步任务不会再向新数据库写回。
+      await _dataReset!.applyPending();
+      // iOS 卸载可能保留 Keychain，不把旧安装的凭据带入新数据库。
+      if (!await File(dbPath).exists()) await keyStore.clear();
 
-      final bibleRaw =
-          await rootBundle.loadString('assets/seed/cangwu/bible.json');
-      final identitiesRaw =
-          await rootBundle.loadString('assets/seed/cangwu/identities.json');
-      final seedsRaw =
-          await rootBundle.loadString('assets/seed/cangwu/seeds.json');
-      final volumeRaw =
-          await rootBundle.loadString('assets/seed/cangwu/volume1.json');
+      final bibleRaw = await rootBundle.loadString(
+        'assets/seed/cangwu/bible.json',
+      );
+      final identitiesRaw = await rootBundle.loadString(
+        'assets/seed/cangwu/identities.json',
+      );
+      final seedsRaw = await rootBundle.loadString(
+        'assets/seed/cangwu/seeds.json',
+      );
+      final volumeRaw = await rootBundle.loadString(
+        'assets/seed/cangwu/volume1.json',
+      );
 
       final seed = SeedData(
         bible: WorldBible.fromJson(jsonDecode(bibleRaw)),
@@ -82,18 +109,38 @@ class _BootstrapAppState extends State<BootstrapApp> {
         builtinSeed: seed,
         filesDir: filesDir,
       );
-      if (!mounted) return;
+      opened = engine;
       final gate = await engine.readAppSetting(AppFlags.ageGate);
       final teen = await engine.isTeenMode();
+      final privacy = await engine.readAppSetting('privacy_notice_version');
+      if (!mounted) {
+        await engine.close();
+        return;
+      }
       setState(() {
         _engine = engine;
         _ageGate = gate;
         _teen = teen;
+        _privacyAccepted = privacy == privacyNoticeVersion;
       });
     } catch (e) {
+      await opened?.close();
       if (!mounted) return;
       setState(() => _error = e);
     }
+  }
+
+  Future<void> _acceptPrivacy() async {
+    await _engine!.writeAppSetting(
+      'privacy_notice_version',
+      privacyNoticeVersion,
+    );
+    if (mounted) setState(() => _privacyAccepted = true);
+  }
+
+  Future<void> _scheduleReset() async {
+    await _dataReset!.schedule();
+    if (mounted) setState(() => _resetRequested = true);
   }
 
   bool _teen = false;
@@ -115,12 +162,49 @@ class _BootstrapAppState extends State<BootstrapApp> {
 
   @override
   Widget build(BuildContext context) {
+    if (_resetRequested) {
+      return const _PaperSplash(
+        child: PopScope(
+          canPop: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('等待冷启动清理', style: TextStyle(fontSize: 22)),
+              SizedBox(height: 16),
+              Text(
+                '清理尚未执行。请从系统最近任务中完全关闭远行，再重新打开。\n\n下次启动会先清除本机用户数据和 Key，然后恢复内置世界。为避免后台任务写回，当前会话已锁定。',
+                textAlign: TextAlign.center,
+                style: TextStyle(height: 1.7),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    if (_privacyDeclined) {
+      return _PaperSplash(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('未同意数据告知，暂不进入应用。'),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: () => setState(() => _privacyDeclined = false),
+              child: const Text('重新阅读'),
+            ),
+          ],
+        ),
+      );
+    }
     if (_error != null) {
       return _PaperSplash(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            const Text('启动失败', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
+            const Text(
+              '启动失败',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+            ),
             const SizedBox(height: 8),
             Text(
               '$_error',
@@ -141,18 +225,29 @@ class _BootstrapAppState extends State<BootstrapApp> {
           children: <Widget>[
             const Text(
               '远行',
-              style: TextStyle(fontSize: 44, fontWeight: FontWeight.w600, letterSpacing: 10),
+              style: TextStyle(
+                fontSize: 44,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 10,
+              ),
             ),
             const SizedBox(height: 6),
             const Text(
               '世界人生模拟器',
-              style: TextStyle(fontSize: 13, letterSpacing: 6, color: PaperColors.lightSub),
+              style: TextStyle(
+                fontSize: 13,
+                letterSpacing: 6,
+                color: PaperColors.lightSub,
+              ),
             ),
             const SizedBox(height: 36),
             const SizedBox(
               width: 22,
               height: 22,
-              child: CircularProgressIndicator(strokeWidth: 2, color: PaperColors.lightAccent),
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: PaperColors.lightAccent,
+              ),
             ),
             const SizedBox(height: 14),
             const Text(
@@ -160,6 +255,17 @@ class _BootstrapAppState extends State<BootstrapApp> {
               style: TextStyle(fontSize: 12, color: PaperColors.lightSub),
             ),
           ],
+        ),
+      );
+    }
+    if (!_privacyAccepted) {
+      return MaterialApp(
+        key: const ValueKey('privacy'),
+        debugShowCheckedModeBanner: false,
+        theme: buildLightTheme(),
+        home: PrivacyPage(
+          onAccept: _acceptPrivacy,
+          onDecline: () => setState(() => _privacyDeclined = true),
         ),
       );
     }
@@ -175,6 +281,7 @@ class _BootstrapAppState extends State<BootstrapApp> {
       overrides: [
         engineProvider.overrideWithValue(engine),
         teenModeProvider.overrideWith((ref) => _teen),
+        scheduleDataResetProvider.overrideWithValue(_scheduleReset),
       ],
       child: const _WayfarerApp(),
     );
@@ -201,13 +308,21 @@ class _AgeGatePage extends StatelessWidget {
               const Text(
                 '远行',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 40, fontWeight: FontWeight.w600, letterSpacing: 10),
+                style: TextStyle(
+                  fontSize: 40,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 10,
+                ),
               ),
               const SizedBox(height: 8),
               const Text(
                 '世界人生模拟器',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, letterSpacing: 6, color: PaperColors.lightSub),
+                style: TextStyle(
+                  fontSize: 13,
+                  letterSpacing: 6,
+                  color: PaperColors.lightSub,
+                ),
               ),
               const SizedBox(height: 40),
               Text(
@@ -251,7 +366,9 @@ class _PaperSplash extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: buildLightTheme(),
       home: Scaffold(
-        body: Center(child: Padding(padding: const EdgeInsets.all(32), child: child)),
+        body: Center(
+          child: Padding(padding: const EdgeInsets.all(32), child: child),
+        ),
       ),
     );
   }

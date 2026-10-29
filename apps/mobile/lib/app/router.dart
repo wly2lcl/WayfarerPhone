@@ -5,6 +5,8 @@ import '../features/draw/draw_page.dart';
 import '../features/library/runs_library_page.dart';
 import '../features/play/play_page.dart';
 import '../features/settings/settings_page.dart';
+import '../features/settings/privacy_page.dart';
+import '../features/settings/data_management_page.dart';
 import '../features/worlds/manage_page.dart';
 import '../features/worlds/world_detail_page.dart';
 import '../features/worlds/worlds_page.dart';
@@ -27,10 +29,7 @@ import '../features/workshop/workshop_page.dart';
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
   routes: <RouteBase>[
-    GoRoute(
-      path: '/',
-      builder: (context, state) => const WorldsPage(),
-    ),
+    GoRoute(path: '/', builder: (context, state) => const WorldsPage()),
     GoRoute(
       path: '/workshop',
       builder: (context, state) => const WorkshopPage(),
@@ -54,10 +53,7 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) =>
           WorldDetailPage(worldId: state.pathParameters['id']!),
     ),
-    GoRoute(
-      path: '/manage',
-      builder: (context, state) => const ManagePage(),
-    ),
+    GoRoute(path: '/manage', builder: (context, state) => const ManagePage()),
     GoRoute(
       path: '/draw/:worldId',
       builder: (context, state) =>
@@ -76,6 +72,11 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/settings',
       builder: (context, state) => const SettingsPage(),
+    ),
+    GoRoute(path: '/privacy', builder: (context, state) => const PrivacyPage()),
+    GoRoute(
+      path: '/data',
+      builder: (context, state) => const DataManagementPage(),
     ),
     GoRoute(
       path: '/library',

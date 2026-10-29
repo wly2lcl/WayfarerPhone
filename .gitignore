@@ -11,6 +11,11 @@ pubspec.lock
 **/key.properties
 **/*.jks
 **/*.keystore
+**/*.p12
+**/*.pfx
+**/*.p8
+**/*.mobileprovision
+**/*.provisionprofile
 tool/live/config.json
 
 # android
