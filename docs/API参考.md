@@ -1,6 +1,6 @@
 # API 参考 · 本地引擎与模型网关
 
-> 版本：v1.0（单机离线）
+> 版本：v1.1（单机离线）
 > 最后更新：2026-10-28
 > 上游：[技术方案](./技术方案.md) ｜ 相关：[Prompt 契约](./Prompt契约.md)
 >
@@ -113,7 +113,9 @@ class EngineException implements Exception {
 | `settings.writeAppSetting(key, value)` | 写功能开关 |
 | `settings.isTeenMode()` | 青少年模式是否开启（读 `teen_mode == '1'`） |
 | `settings.setTeenMode(on)` | 开/关青少年模式（写 `teen_mode`） |
-| `settings.exportDiagnostics({outPath})` | 导出脱敏诊断 JSON 到 `files/diagnostics/`（默认）或指定路径，返回文件路径（2026-10-29 新增） |
+| `settings.exportDiagnostics({outPath})` | 导出脱敏诊断 JSON 到 `files/diagnostics/`（默认，自动保留最近 5 份）或指定路径，返回文件路径（2026-10-29 新增） |
+| `settings.clearDiagnostics({keep})` | 清除已生成的诊断文件，保留最近 `keep` 份（默认 0 = 全清），返回删除数（2026-10-29 新增） |
+| `settings.purgeExpiredLocalEvents()` | 删除 7 天前的 `local_events` 行并返回删除数；`Engine.open()` 时自动执行（2026-10-29 新增） |
 
 ---
 
@@ -331,7 +333,7 @@ final path = await engine.exportDiagnostics(outPath: ...); // 或指定输出路
 ```
 
 - 功能开关经 `AppFlags`（`AppFlags.ageGate = 'age_gate'`、`AppFlags.teenMode = 'teen_mode'`）落 `app_settings` 表；首启年龄门选择「未满 18 周岁」时 App 层自动 `setTeenMode(true)`。
-- **青少年模式护栏**（引擎层，全部在访问文件/网络之前抛 `STATE_INVALID`）：`turns.run` 拒绝 `FreeTextInput`（仅选项可推进，不发起模型请求）；`library.export / import / runs.exportPack / runs.importPack` 与 `imports.start` 拒绝调用。UI 侧同步隐藏对应入口（工坊 TXT、管理页导入、我的局导入/导出、世界详情导出、人生卡片）。
+- **青少年模式护栏**（引擎层，全部在访问文件/网络之前抛 `STATE_INVALID`）：`turns.run` 拒绝 `FreeTextInput`（仅选项可推进，不发起模型请求）；`assistant` 随行问答拒绝自由提问（2026-10-29 起，与自由输入同口径）；`library.export / import / runs.exportPack / runs.importPack` 与 `imports.start` 拒绝调用。UI 侧同步隐藏对应入口（工坊 TXT、管理页导入、我的局导入/导出、世界详情导出、人生卡片、游玩页随行助手图标）。
 - **诊断包**（`exportDiagnostics`）脱敏清单——**不含**：模型 Key、`run_events` 叙事正文、快照、圣经、导入原文；**包含**：`kind/version/generatedAt/schemaVersion`、设置项（不含 Key 字段）、功能开关、9 张业务表行数计数、近 30 天用量聚合（请求数/失败/p50/p95/token/回合）、反馈记录 ≤200 条、近 7 天本地事件 ≤200 条（仅类型与回合号）。UI 入口在设置页「诊断」节「导出诊断数据」。
 
 ---
@@ -452,6 +454,7 @@ class TurnError        extends TurnEvent { final EngineCode code; final String m
 
 | 日期 | 变更 |
 | --- | --- |
+| 2026-10-29 | v1.1：AI 标识收口与诊断/护栏补强——门面清单新增 `settings.clearDiagnostics` / `settings.purgeExpiredLocalEvents`，`exportDiagnostics` 注明自动保留最近 5 份；青少年模式护栏补第④项（`assistant` 自由问答拒绝）；游玩页页脚 AI 生成角标（WF-LAUNCH-03 四处齐备） |
 | 2026-10-29 | v1.0：诊断包与未成年人保护——门面清单与新增 §3 节：`settings.readAppSetting/writeAppSetting/isTeenMode/setTeenMode/exportDiagnostics`、`AppFlags` 开关键、青少年模式护栏清单（turns.run 自由输入 / library 四入口 / imports.start 抛 `STATE_INVALID`）、诊断包脱敏清单 |
 | 2026-10-29 | v0.9：内容安全与反馈——新增 `feedback` 节（`Engine.submitFeedback` / `listFeedback`，落本机 `feedback_records` 表不联网）；`CONTENT_BLOCKED` 错误码补触发点（自由输入/访谈/导入文件名本地拦截、生成层流中断兜底不落库） |
 | 2026-10-23 | v0.1：HTTP 端点、SSE、错误码、配额 |

@@ -204,7 +204,17 @@ class Engine {
     if (builtinSeed != null) {
       await engine._installSeed(builtinSeed);
     }
+    // 本地埋点 7 天滚动（合规与内容安全 §6：默认 7 天、仅用于排错）
+    await engine.purgeExpiredLocalEvents();
     return engine;
+  }
+
+  /// 删除 7 天前的 local_events 行；启动时调用，保证表不无限增长
+  Future<int> purgeExpiredLocalEvents() {
+    final cutoff = DateTime.now().millisecondsSinceEpoch - 7 * 86400000;
+    return (db.delete(db.localEvents)
+          ..where((e) => e.createdAt.isSmallerOrEqualValue(cutoff)))
+        .go();
   }
 
   static String _dirname(String path) {
@@ -742,6 +752,10 @@ class Engine {
   // ---- assistant ----
 
   Stream<AssistantEvent> assistant(String runId, String question) async* {
+    // 青少年模式第四处引擎护栏：随行问答收自由文本，与回合自由输入同口径关闭
+    if (await AppFlags(db).teenModeOn()) {
+      throw EngineException(EngineCode.stateInvalid, '青少年模式下随行助手不可用');
+    }
     final head = await RunsDao(db).loadHead(runId);
     if (head == null) throw EngineException(EngineCode.notFound, '局不存在');
     final state = await RunsDao(db).loadState(runId);
@@ -920,7 +934,30 @@ class Engine {
       path = '${dir.path}/wf_diagnostics_${now.millisecondsSinceEpoch}.json';
     }
     await File(path).writeAsString(const JsonEncoder.withIndent('  ').convert(payload));
+    // 诊断文件默认只保留最近 5 份，更早的随手清理（文件含反馈明细，减少留存面）
+    await _pruneDiagnostics(keep: 5);
     return path;
+  }
+
+  /// 清除已生成的诊断文件；`keep` 保留最近 N 份（按文件名时间戳排序），0 表示全清。
+  /// 返回删除的文件数。诊断目录不存在时返回 0。
+  Future<int> clearDiagnostics({int keep = 0}) => _pruneDiagnostics(keep: keep);
+
+  Future<int> _pruneDiagnostics({required int keep}) async {
+    final dir = Directory('$filesDir/diagnostics');
+    if (!dir.existsSync()) return 0;
+    final files = dir
+        .listSync()
+        .whereType<File>()
+        .where((f) => f.path.endsWith('.json'))
+        .toList()
+      ..sort((a, b) => b.path.compareTo(a.path)); // 文件名含毫秒时间戳，倒序即最新在前
+    var removed = 0;
+    for (final f in files.skip(keep)) {
+      await f.delete();
+      removed++;
+    }
+    return removed;
   }
 
   Future<void> close() => db.close();

@@ -194,6 +194,19 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     }
   }
 
+  /// 清除已生成的诊断文件（默认全清）；文件含反馈明细，给用户主动减少留存的入口
+  Future<void> _clearDiagnostics() async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final removed =
+          await ref.read(engineProvider).clearDiagnostics(keep: 0);
+      messenger.showSnackBar(SnackBar(
+          content: Text(removed == 0 ? '没有可清除的诊断文件' : '已清除 $removed 个诊断文件')));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('操作失败：$e')));
+    }
+  }
+
   /// 诊断包（合规与内容安全 §6/§8）：本地生成 JSON，经系统分享面板由用户主动发出。
   /// 包含模型配置（不含 Key）、用量统计、结构与计数、反馈记录与近 7 天埋点；
   /// 不含叙事正文与状态快照。
@@ -465,10 +478,20 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           const SizedBox(height: 8),
           Align(
             alignment: Alignment.centerRight,
-            child: OutlinedButton.icon(
-              onPressed: _exportDiagnostics,
-              icon: const Icon(Icons.upload_file_outlined, size: 16),
-              label: const Text('导出诊断数据'),
+            child: Wrap(
+              spacing: 8,
+              children: <Widget>[
+                OutlinedButton.icon(
+                  onPressed: _clearDiagnostics,
+                  icon: const Icon(Icons.delete_sweep_outlined, size: 16),
+                  label: const Text('清除诊断文件'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _exportDiagnostics,
+                  icon: const Icon(Icons.upload_file_outlined, size: 16),
+                  label: const Text('导出诊断数据'),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 24),

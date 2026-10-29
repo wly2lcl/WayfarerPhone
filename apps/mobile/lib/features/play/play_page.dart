@@ -147,13 +147,15 @@ class _PlayPageState extends ConsumerState<PlayPage> {
       appBar: AppBar(
         title: Text(_title(play)),
         actions: <Widget>[
-          Builder(
-            builder: (ctx) => IconButton(
-              icon: const Icon(Icons.auto_stories_outlined),
-              tooltip: '随行助手',
-              onPressed: () => Scaffold.of(ctx).openEndDrawer(),
+          // 青少年模式下随行助手由引擎拒绝（自由问答口径同自由输入），入口一并隐藏
+          if (!ref.watch(teenModeProvider))
+            Builder(
+              builder: (ctx) => IconButton(
+                icon: const Icon(Icons.auto_stories_outlined),
+                tooltip: '随行助手',
+                onPressed: () => Scaffold.of(ctx).openEndDrawer(),
+              ),
             ),
-          ),
           PopupMenuButton<String>(
             tooltip: '更多',
             onSelected: (value) {
@@ -221,6 +223,19 @@ class _PlayPageState extends ConsumerState<PlayPage> {
                             ),
                           ),
                       ],
+                    ),
+                  ),
+                ),
+                // AI 生成标识（合规 §4）：固定页脚角标，用户不可关闭
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.only(top: 4, bottom: 2),
+                  alignment: Alignment.center,
+                  child: Text(
+                    '本故事由 AI 生成',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Theme.of(context).hintColor,
                     ),
                   ),
                 ),

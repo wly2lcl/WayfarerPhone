@@ -1,6 +1,6 @@
 // WF-LAUNCH-04 未成年人保护 + 诊断包单测（合规与内容安全 §5/§6）
-// 覆盖：年龄门/青少年模式开关读写、青少年模式下自由输入/导入/导出引擎级护栏、
-//       诊断包导出（含反馈记录、脱敏不含叙事正文）。
+// 覆盖：年龄门/青少年模式开关读写、青少年模式下自由输入/随行助手/导入/导出引擎级护栏、
+//       local_events 7 天滚动清理、诊断包导出（含反馈记录、脱敏不含叙事正文）与诊断文件清理。
 import 'dart:convert';
 import 'dart:io';
 
@@ -158,6 +158,106 @@ void main() {
         throwsA(isA<EngineException>()
             .having((e) => e.code, 'code', EngineCode.notFound)),
       );
+    });
+  });
+
+  group('青少年模式：随行助手护栏（自由问答与自由输入同口径）', () {
+    late Engine engine;
+    late Directory tmp;
+
+    setUp(() async {
+      tmp = await Directory.systemTemp.createTemp('wf_teen_assist');
+      engine = await Engine.open(
+        dbPath: '${tmp.path}/app.db',
+        keyStore: InMemoryKeyStore(),
+        random: SeqRandom([1, 2, 3]),
+      );
+    });
+    tearDown(() async {
+      await engine.close();
+      await tmp.delete(recursive: true);
+    });
+
+    test('开启 → STATE_INVALID（先于任何查库与模型请求）', () async {
+      await engine.setTeenMode(true);
+      await expectLater(
+        engine.assistant('r_none', '今晚去哪').toList(),
+        throwsA(isA<EngineException>()
+            .having((e) => e.code, 'code', EngineCode.stateInvalid)
+            .having((e) => e.message, 'message', contains('随行助手'))),
+      );
+    });
+
+    test('关闭后解除（未知局按原语义返回 NOT_FOUND）', () async {
+      await expectLater(
+        engine.assistant('r_none', '今晚去哪').toList(),
+        throwsA(isA<EngineException>()
+            .having((e) => e.code, 'code', EngineCode.notFound)),
+      );
+    });
+  });
+
+  group('local_events 7 天滚动（合规 §6：默认 7 天、仅排错用）', () {
+    test('Engine.open 清理 7 天前旧行，保留近期行', () async {
+      final tmp = await Directory.systemTemp.createTemp('wf_events_purge');
+      final db = openDbAt('${tmp.path}/app.db');
+      final now = DateTime.now().millisecondsSinceEpoch;
+      await db.into(db.localEvents).insert(LocalEventsCompanion.insert(
+            name: 'old_event',
+            createdAt: now - 8 * 86400000,
+          ));
+      await db.into(db.localEvents).insert(LocalEventsCompanion.insert(
+            name: 'fresh_event',
+            createdAt: now - 1 * 86400000,
+          ));
+      await db.close();
+
+      final engine = await Engine.open(
+        dbPath: '${tmp.path}/app.db',
+        keyStore: InMemoryKeyStore(),
+        random: SeqRandom([1, 2, 3]),
+      );
+      addTearDown(() async {
+        await engine.close();
+        await tmp.delete(recursive: true);
+      });
+      final rows = await engine.db.select(engine.db.localEvents).get();
+      expect(rows.map((r) => r.name), ['fresh_event'],
+          reason: '8 天前的旧行应在启动时被滚动清理');
+      // 公开方法可重复调用（幂等）
+      expect(await engine.purgeExpiredLocalEvents(), 0);
+    });
+  });
+
+  group('诊断文件清理', () {
+    test('导出自动保留最近 5 份；clearDiagnostics 可全清', () async {
+      final tmp = await Directory.systemTemp.createTemp('wf_diag_prune');
+      final engine = await Engine.open(
+        dbPath: '${tmp.path}/app.db',
+        keyStore: InMemoryKeyStore(),
+        random: SeqRandom([1, 2, 3]),
+        filesDir: '${tmp.path}/files',
+      );
+      addTearDown(() async {
+        await engine.close();
+        await tmp.delete(recursive: true);
+      });
+      final dir = Directory('${tmp.path}/files/diagnostics');
+      for (var i = 0; i < 7; i++) {
+        await engine.exportDiagnostics();
+        await Future<void>.delayed(const Duration(milliseconds: 2));
+      }
+      // 导出内置自动清理：只保留最近 5 份
+      expect(dir.listSync().whereType<File>().length, 5,
+          reason: '导出第 6/7 份时应顺带清理更早的文件');
+      // 手动保留最近 2 份
+      expect(await engine.clearDiagnostics(keep: 2), 3);
+      expect(dir.listSync().whereType<File>().length, 2);
+      // 全清
+      expect(await engine.clearDiagnostics(), 2);
+      expect(dir.listSync().whereType<File>(), isEmpty);
+      // 目录已空/不存在时幂等返回 0
+      expect(await engine.clearDiagnostics(), 0);
     });
   });
 
