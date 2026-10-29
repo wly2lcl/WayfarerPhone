@@ -206,6 +206,9 @@ class Engine {
     }
     // 本地埋点 7 天滚动（合规与内容安全 §6：默认 7 天、仅用于排错）
     await engine.purgeExpiredLocalEvents();
+    // usage_log 90 天滚动（每次模型请求一条、含失败重试，不治理则无限增长；
+    // 设置页统计窗口为近 30 天，90 天上限不影响任何展示）
+    await engine.purgeExpiredUsageLog();
     return engine;
   }
 
@@ -214,6 +217,14 @@ class Engine {
     final cutoff = DateTime.now().millisecondsSinceEpoch - 7 * 86400000;
     return (db.delete(db.localEvents)
           ..where((e) => e.createdAt.isSmallerOrEqualValue(cutoff)))
+        .go();
+  }
+
+  /// 删除 [keepDays] 天前的 usage_log 行；启动时自动按 90 天滚动，亦可手动调用
+  Future<int> purgeExpiredUsageLog({int keepDays = 90}) {
+    final cutoff = DateTime.now().millisecondsSinceEpoch - keepDays * 86400000;
+    return (db.delete(db.usageLog)
+          ..where((u) => u.createdAt.isSmallerOrEqualValue(cutoff)))
         .go();
   }
 
@@ -573,34 +584,29 @@ class Engine {
           ..where((r) => r.isTrial.equals(false))
           ..orderBy([(r) => OrderingTerm.desc(r.updatedAt)]))
         .get();
-    final versions = await db.select(db.worldVersions).get();
     final sources = <String, String>{
       for (final w in await db.select(db.worlds).get()) w.id: w.source,
     };
-    final bibles = <String, WorldBible?>{};
-    WorldBible? bibleOf(String worldId, int version) {
-      final key = '$worldId@$version';
-      if (!bibles.containsKey(key)) {
-        WorldBible? found;
-        for (final v in versions) {
-          if (v.worldId == worldId && v.version == version) {
-            found = WorldBible.fromJson(jsonDecode(v.bible));
-            break;
-          }
-        }
-        bibles[key] = found;
+    // 终局标题只对已落幕局解析：仅加载涉及的世界版本并各解码一次，
+    // 避免为列表全表解码所有版本 bible（N+1，库越大列表越慢）
+    final endingTitles = <String, String>{};
+    final needed = <String, Set<int>>{};
+    for (final r in rows) {
+      if (r.endingId != null) {
+        needed.putIfAbsent(r.worldId, () => {}).add(r.worldVersion);
       }
-      return bibles[key];
     }
-
-    String? titleOf(String worldId, int version, String? endingId) {
-      if (endingId == null) return null;
-      final bible = bibleOf(worldId, version);
-      if (bible == null) return null;
-      for (final e in bible.endgame) {
-        if (e.id == endingId) return e.title;
+    for (final entry in needed.entries) {
+      final versionRows = await (db.select(db.worldVersions)
+            ..where((v) =>
+                v.worldId.equals(entry.key) & v.version.isIn(entry.value)))
+          .get();
+      for (final v in versionRows) {
+        final bible = WorldBible.fromJson(jsonDecode(v.bible));
+        for (final e in bible.endgame) {
+          endingTitles['${v.worldId}@${v.version}@${e.id}'] = e.title;
+        }
       }
-      return null;
     }
 
     return rows
@@ -614,7 +620,9 @@ class Engine {
               turnNo: r.turnNo,
               headSnapshotId: r.headSnapshotId,
               endingId: r.endingId,
-              endingTitle: titleOf(r.worldId, r.worldVersion, r.endingId),
+              endingTitle: r.endingId == null
+                  ? null
+                  : endingTitles['${r.worldId}@${r.worldVersion}@${r.endingId}'],
               // 存档包可导出 = 非 import 来源（builtin 豁免开放，世界分享与UGC §4）
               exportable: (sources[r.worldId] ?? 'created') != 'import',
             ))
@@ -736,8 +744,19 @@ class Engine {
   Future<List<SnapshotBrief>> listSnapshots(String runId, {int limit = 12}) =>
       RunsDao(db).listSnapshots(runId, limit: limit);
 
+  /// 删除一局并级联清理其全部从属数据（run_events / run_snapshots / usage_log /
+  /// events_fts），避免删局后孤儿行只增不减（数据卫生）
   Future<void> deleteRun(String runId) async {
-    await (db.delete(db.runs)..where((r) => r.id.equals(runId))).go();
+    await db.transaction(() async {
+      await (db.delete(db.runEvents)..where((e) => e.runId.equals(runId))).go();
+      await (db.delete(db.runSnapshots)..where((s) => s.runId.equals(runId)))
+          .go();
+      await (db.delete(db.usageLog)..where((u) => u.runId.equals(runId))).go();
+      // events_fts 是裸 SQL FTS5 虚拟表（无 drift 表对象），走 customStatement
+      await db.customStatement(
+          'DELETE FROM events_fts WHERE run_id = ?', [runId]);
+      await (db.delete(db.runs)..where((r) => r.id.equals(runId))).go();
+    });
   }
 
   // ---- library / 存档包（M3，世界分享与UGC §9）----
@@ -797,8 +816,12 @@ class Engine {
       query.where((u) => u.createdAt.isSmallerOrEqualValue(to));
     }
     final trialIds = await _trialRunIds();
-    final rows =
-        (await query.get()).where((r) => !trialIds.contains(r.runId)).toList();
+    // 试玩局排除下推到 SQL（isNotIn），避免全表载入内存再过滤；
+    // run_id 为 NULL 的探活行须显式保留（SQL 中 NULL NOT IN 结果为 NULL 会被滤掉）
+    if (trialIds.isNotEmpty) {
+      query.where((u) => u.runId.isNull() | u.runId.isNotIn(trialIds));
+    }
+    final rows = await query.get();
     var turns = 0, tokensIn = 0, tokensOut = 0, failures = 0;
     final byRole = <String, List<int>>{};
     for (final r in rows) {

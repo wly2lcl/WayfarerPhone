@@ -68,6 +68,34 @@ class _RunsLibraryPageState extends ConsumerState<RunsLibraryPage> {
     }
   }
 
+  /// 删除单局（引擎级联清理 run_events/run_snapshots/usage_log/events_fts，
+  /// 数据卫生）；二次确认防误触
+  Future<void> _deleteRun(RunHead run) async {
+    final engine = ref.read(engineProvider);
+    final messenger = ScaffoldMessenger.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('删除这一局？'),
+        content: const Text('该局的正文、状态与用量统计将一并清除，不可恢复。'),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await engine.deleteRun(run.id);
+    messenger.showSnackBar(const SnackBar(content: Text('已删除这一局')));
+    ref.invalidate(runsLibraryProvider);
+  }
+
   @override
   Widget build(BuildContext context) {
     final runs = ref.watch(runsLibraryProvider);
@@ -201,6 +229,13 @@ class _RunsLibraryPageState extends ConsumerState<RunsLibraryPage> {
                               onPressed: () => context.push('/play/${run.id}'),
                               child: const Text('进入'),
                             ),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline, size: 20),
+                            tooltip: '删除',
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: () => _deleteRun(run),
+                          ),
                         ],
                       ),
                     ),

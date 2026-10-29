@@ -93,10 +93,12 @@ class ModelGateway {
   Future<GatewayResult> complete(GatewayRequest req) async {
     final settings = _settings;
     final model = settings.modelFor(req.role);
-    final sw = Stopwatch()..start();
+    // 计时按「单次尝试」重置：重试后累计耗时不得影响本次判定与用量记录
+    final sw = Stopwatch();
     var attempt = 0;
     while (true) {
       attempt++;
+      sw..reset()..start();
       try {
         final (text, firstByteMs) = await _runOnce(settings, model, req);
         sw.stop();
@@ -117,14 +119,16 @@ class ModelGateway {
         _record(req.role, model, 0, 0, false, sw.elapsedMilliseconds, false,
             runId: req.runId, turnNo: req.turnNo);
         if (!e.canRetry || attempt > _maxAttempts(e)) rethrow;
-        await Future<void>.delayed(_backoff(attempt));
+        await Future<void>.delayed(_backoff(attempt, e));
       }
     }
   }
 
   /// 流式返回正文增量（叙事 / 助手）。结束后发一次完整结果。
   Stream<dynamic> stream(GatewayRequest req) async* {
-    final sw = Stopwatch()..start();
+    // 计时按「单次尝试」重置：修复重试间不重置导致第二次尝试即使首字秒回
+    // 也被累计耗时误判「首字超时」的 bug
+    final sw = Stopwatch();
     final settings = _settings;
     final model = settings.modelFor(req.role);
     var attempt = 0;
@@ -137,6 +141,7 @@ class ModelGateway {
       attempt++;
       firstDelta = true;
       buffer = StringBuffer();
+      sw..reset()..start();
       try {
         await for (final chunk in _runStream(settings, model, req)) {
           if (chunk is String) {
@@ -168,7 +173,7 @@ class ModelGateway {
           throw EngineException(EngineCode.modelTimeout, '流式中断，已保留正文', canRetry: true);
         }
         if (!e.canRetry || attempt > _maxAttempts(e)) rethrow;
-        await Future<void>.delayed(_backoff(attempt));
+        await Future<void>.delayed(_backoff(attempt, e));
       }
     }
   }
@@ -211,8 +216,15 @@ class ModelGateway {
         _ => 0,
       };
 
-  Duration _backoff(int attempt) =>
-      Duration(seconds: attempt == 1 ? 1 : 3);
+  /// 退避：429 时优先用供应商返回的 Retry-After（_mapHttpError 已解析并 clamp 0..30，
+  /// 0 表示立即重试；限流最多重试 1 次不会成风暴），其余按固定 1s/3s
+  Duration _backoff(int attempt, EngineException e) {
+    final retryAfter = e.details?['retryAfterSec'];
+    if (retryAfter is int) {
+      return Duration(seconds: retryAfter);
+    }
+    return Duration(seconds: attempt == 1 ? 1 : 3);
+  }
 
   Future<(String, int?)> _runOnce(
     ModelSettings settings,

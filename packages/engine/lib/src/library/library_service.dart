@@ -225,6 +225,8 @@ class LibraryService {
       if (runIds.isNotEmpty) {
         await (db.delete(db.runSnapshots)..where((s) => s.runId.isIn(runIds))).go();
         await (db.delete(db.runEvents)..where((e) => e.runId.isIn(runIds))).go();
+        // 用量行一并清理（与 deleteRun 同口径，避免孤儿行只增不减）
+        await (db.delete(db.usageLog)..where((u) => u.runId.isIn(runIds))).go();
         for (final id in runIds) {
           await db.customStatement('DELETE FROM events_fts WHERE run_id = ?', [id]);
         }

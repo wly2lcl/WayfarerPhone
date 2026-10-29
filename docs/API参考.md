@@ -1,8 +1,10 @@
 # API 参考 · 本地引擎与模型网关
 
-> 版本：v1.1（单机离线）
-> 最后更新：2026-10-28
+> 版本：v1.2（单机离线）
+> 最后更新：2026-10-29
 > 上游：[技术方案](./技术方案.md) ｜ 相关：[Prompt 契约](./Prompt契约.md)
+>
+> v1.2 变更：数据卫生与重试修复——`runs.delete` 级联清理扩至 `usage_log` 与 `events_fts`（原只删局行，孤儿数据只增不减）；`library.delete` 同口径补 `usage_log`；新增 `settings.purgeExpiredUsageLog()`（90 天滚动，`Engine.open()` 自动执行）；`usageSummary` 试玩排除下推 SQL；`listRuns` 终局标题仅解析已落幕局涉及的世界版本（消除全表解码 bible 的 N+1）；网关重试计时按单次尝试重置（修复第二次尝试被累计耗时误判首字超时），429 `Retry-After` 真正用于退避。
 >
 > v0.7 变更：M3 分享闭环落地——§3 `library.*()`（export/import/rename/delete/space）与 `runs.exportPack/importPack` 由「未实现」改为已实现语义：可导出性门禁（builtin/imported 世界 `exportable=0` → `EXPORT_FORBIDDEN`，试玩局不可导出）、`WorldSummary`/`RunHead` 增 `exportable`（客户端据此隐藏导出入口）、`formatVersion` 兼容检查、runId 冲突自动改后缀、导入五分支。
 >
@@ -84,7 +86,7 @@ class EngineException implements Exception {
 | `runs.archive(runId)` | 人生档案 |
 | `runs.exportPack(runId)` | 导出 `.run` 存档包（当前局 + 快照 + 事件） |
 | `runs.importPack(File)` | 导入 `.run` 存档包，落地为本机新局 |
-| `runs.delete(runId)` | 删除一局（含快照与事件） |
+| `runs.delete(runId)` | 删除一局并**级联清理全部从属数据**：快照、事件、用量行、检索索引（2026-10-29 起，原只删局行致孤儿数据残留）；「我的局」卡片删除按钮触发，二次确认 |
 | `assistant.ask(runId, text)` | 向随行助手提问，返回 `Stream<AssistantEvent>` |
 | `drafts.create(source)` | 创建世界草稿（`manual / dialogue / import`） |
 | `drafts.interview(draftId, text, {skip})` | 结构化访谈一轮：抽取 / 跳过代填 / 矛盾检出 |
@@ -116,6 +118,7 @@ class EngineException implements Exception {
 | `settings.exportDiagnostics({outPath})` | 导出脱敏诊断 JSON 到 `files/diagnostics/`（默认，自动保留最近 5 份）或指定路径，返回文件路径（2026-10-29 新增） |
 | `settings.clearDiagnostics({keep})` | 清除已生成的诊断文件，保留最近 `keep` 份（默认 0 = 全清），返回删除数（2026-10-29 新增） |
 | `settings.purgeExpiredLocalEvents()` | 删除 7 天前的 `local_events` 行并返回删除数；`Engine.open()` 时自动执行（2026-10-29 新增） |
+| `settings.purgeExpiredUsageLog({keepDays})` | 删除 `keepDays`（默认 90）天前的 `usage_log` 行并返回删除数；`Engine.open()` 时自动按 90 天滚动，设置页统计窗口为近 30 天不受影响（2026-10-29 新增） |
 
 ---
 
@@ -292,7 +295,7 @@ final imp = await engine.importRunPack(path);             // RunImportResult(run
 - **导入校验**（`WorldPackage.unpack` / `RunPackage.unpack`）：20 MB 上限（`IMPORT_TOO_LARGE`）、zip 解析失败与缺文件（`IMPORT_INVALID` 具体到字段）、`formatVersion` 高于/低于本机支持值均拒绝、`manifest.aiGenerated != true` 拒绝（AI 生成标识不可关闭）、checksum 不匹配拒绝（`CHECKSUM_MISMATCH`，篡改任意字节后导入被拒）
 - **世界导入冲突处理**（世界分享与UGC §6）：同 worldId 同版本 checksum 相同 → `skipped`；同版本 checksum 不同 → 默认 `skipped`，`overwrite: true` 时 `overwritten`（删除旧版本行后重插）；更高版本 → `version_added`（追加并推进 latestVersion）；更低版本 → `saved_as_new`（新 worldId 另存，不降级已有版本）；无同名世界 → `created`。标题与已有世界同名时追加「（导入 N）」去重（`_dedupeTitle`）
 - **存档包导入**：缺对应 `worldId + worldVersion` 时 `NOT_FOUND` 拒收，不留半成品；runId 冲突自动改后缀（`r_e811` → `r_e811_2`，`renamed = true`）；导入后从原 `turnNo` 与最新快照续玩
-- **删除**：`library.delete` 级联删除版本、全部存档（局/快照/事件/检索索引）与导入原件，返回删除的局数；UI 在有存档时二次确认并说明影响（世界分享与UGC §8）
+- **删除**：`library.delete` 级联删除版本、全部存档（局/快照/事件/检索索引/用量行）与导入原件，返回删除的局数；UI 在有存档时二次确认并说明影响（世界分享与UGC §8）。单局删除走 `runs.delete`（同口径级联，含 `usage_log`）
 - **来源与再导出**：导入的 `.world` 落 `source = 'shared'` 且 `exportable = 1`，再导出时 `manifest.origin = 'shared'`、`sourceWorldId` 保留原 worldId、NOTICE.txt 保留原作者声明（世界分享与UGC §7）；导入原件存私有 `files/worlds/<worldId>/v<N>.world`（仅占用统计，不进导出路径）
 
 ### usage.summary()
@@ -426,8 +429,10 @@ class TurnError        extends TurnEvent { final EngineCode code; final String m
 | 单次总超时 | 180 s |
 | 网络错误重试 | 2 次，指数退避 1 s / 3 s |
 | 超时重试 | 1 次 |
-| 429 | 读 `Retry-After`，最多等 30 s，重试 1 次 |
+| 429 | 读 `Retry-After` 并真正用于退避（0 表示立即重试，最多等 30 s；2026-10-29 起原实现固定 1s/3s 未消费该头），重试 1 次 |
 | 4xx（401/403/400） | 不重试，直接映射错误码 |
+
+重试计时按「单次尝试」重置（2026-10-29 修复：原计时器跨重试累计，第二次尝试即使首字秒回也会被累计耗时误判「首字超时」）。
 
 ### 5.4 Token 记账
 
@@ -454,6 +459,7 @@ class TurnError        extends TurnEvent { final EngineCode code; final String m
 
 | 日期 | 变更 |
 | --- | --- |
+| 2026-10-29 | v1.2：数据卫生与重试修复——`runs.delete` 级联清理扩至 `usage_log`/`events_fts`，`library.delete` 同口径补 `usage_log`；门面清单新增 `settings.purgeExpiredUsageLog`（90 天滚动）；`listRuns` 终局标题仅解析落幕局涉及版本（消除 N+1）；§5.3 重试计时按单次尝试重置、429 `Retry-After` 用于退避；「我的局」新增单局删除按钮（二次确认） |
 | 2026-10-29 | v1.1：AI 标识收口与诊断/护栏补强——门面清单新增 `settings.clearDiagnostics` / `settings.purgeExpiredLocalEvents`，`exportDiagnostics` 注明自动保留最近 5 份；青少年模式护栏补第④项（`assistant` 自由问答拒绝）；游玩页页脚 AI 生成角标（WF-LAUNCH-03 四处齐备） |
 | 2026-10-29 | v1.0：诊断包与未成年人保护——门面清单与新增 §3 节：`settings.readAppSetting/writeAppSetting/isTeenMode/setTeenMode/exportDiagnostics`、`AppFlags` 开关键、青少年模式护栏清单（turns.run 自由输入 / library 四入口 / imports.start 抛 `STATE_INVALID`）、诊断包脱敏清单 |
 | 2026-10-29 | v0.9：内容安全与反馈——新增 `feedback` 节（`Engine.submitFeedback` / `listFeedback`，落本机 `feedback_records` 表不联网）；`CONTENT_BLOCKED` 错误码补触发点（自由输入/访谈/导入文件名本地拦截、生成层流中断兜底不落库） |
