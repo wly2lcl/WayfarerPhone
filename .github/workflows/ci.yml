@@ -1,0 +1,46 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.44.3"
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Install SQLite
+        run: sudo apt-get update && sudo apt-get install -y libsqlite3-dev
+
+      - name: Static analysis
+        run: flutter analyze
+
+      - name: Documentation links
+        run: dart run tool/check_links.dart
+
+      - name: Contracts tests
+        run: dart test
+        working-directory: packages/contracts
+
+      - name: Engine tests
+        run: dart test
+        working-directory: packages/engine
+
+      - name: Mobile widget tests
+        run: flutter test
+        working-directory: apps/mobile
+
+      - name: Golden turn replay
+        run: dart run tool/golden/replay.dart
+        working-directory: packages/engine

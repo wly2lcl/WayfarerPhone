@@ -17,6 +17,7 @@ pubspec.lock
 **/*.mobileprovision
 **/*.provisionprofile
 tool/live/config.json
+tool/release/*.env
 
 # android
 apps/mobile/android/.gradle/

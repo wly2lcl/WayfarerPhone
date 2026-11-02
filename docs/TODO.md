@@ -348,13 +348,15 @@ M3 遗留（验收证据已尽环境所能，以下为未覆盖项，复核时�
   验收：政策写明数据留设备与模型请求流向；清理后无残留
   已实现（2026-10-29）：首次/告知版本变化时显式同意数据告知，拒绝不进入业务；设置可重读；明确小说分块及上下文发往自选服务商。数据管理统一导航到 `.world` / `.run`，不新增绕过版权/青少年门禁的数据库备份；存档及诊断分享前告知。全清采用二次确认 → 持久化清理标记 → 锁定会话 → 用户完全关闭后冷启动先清 Key/数据库及沙盒文件，再初始化内置世界；失败保留标记并阻断启动、允许重试。
   本地验证：移动端 34 项测试覆盖真实 Bootstrap、故障重试、原子标记、符号链接边界、同意门及 iOS 通道/Keychain 选项。BlueStacks 隔离 QA 包完成取消/确认/返回不绕过/冷启动全清，内置世界恢复、局列表空、Key/配置清空、用量归零、诊断无文件，外部 Download 假原件前后一致；不触及日常包。
-  未闭合：发行主体、正式联系方式与经法务确认的隐私政策/用户协议；物理 iPhone/Android 清理与卸载重装验收。应用无法撤回另存/已分享文件及服务商已收到的数据，不承诺闪存取证级擦除。
+  未闭合：发行主体、正式联系方式与经法务确认的隐私政策/用户协议；物理 iPhone/Android 清理与卸载重装验收。应用无法撤回另存/已分享文件及服务商已收到的数据，不承诺闪存取证级擦除。**2026-11-02 已产出对外文本草稿**：`store/隐私政策.md`、`store/用户协议.md`，结构完整，发行主体/邮箱/生效日期/法域/管辖地均为【待填写】，法务确认前不可提交。
 - [~] **WF-LAUNCH-06 双端商店审核**
   产出：Apple / Google 审核材料（AI 内容说明、内容分级问卷、截图）
   验收：两端审核指南相关条目逐条勾选
   已实现（2026-10-29）：Android release 环境变量签名、禁 debug 回退、debug-only 独立 QA 包、主 manifest 联网权限与禁备份配置；补齐 iOS 15+ Runner 与 Swift Package Manager 插件工程，未伪造签名团队。Android QA 构建通过；缺签名的 assembleRelease、QA 的 assembleRelease/assembleProfile 均按预期被阻止；iOS unsigned release 与 arm64 模拟器编译通过。
+  已补（2026-11-02）：品牌资源收口——应用名「远行」（Android `@string/app_name`）、「远」字印章品牌图标（Android 全密度 + adaptive icon + v33 单色层、iOS 全尺寸 AppIcon、双端启动图/启动底色，Android 12+ 系统启动画面同品牌）；iOS 工程设 iPhone-only（`TARGETED_DEVICE_FAMILY=1`，免除 iPad 截图）；iOS `PrivacyInfo.xcprivacy` 入工程（无追踪、无开发者收集、四类 Required Reason API）；商店材料 `store/商店材料.md` 含中英文案口径、数据安全/分级/隐私申报建议、审核备注与 5 张 1080×1920 Android 截图（`store/screenshots/android/`）、App Store 6.9"（1290×2796）与 6.5"（1242×2688）各 5 张截图（`store/screenshots/appstore-6.9/`、`store/screenshots/appstore-6.5/`）及 Play 512 图标/Feature Graphic（`store/branding/`）；隐私政策与用户协议草稿（`store/隐私政策.md`、`store/用户协议.md`，发行主体/联系方式/URL 待填）；Android 签名构建脚本 `tool/release/build_android.sh`（读取环境变量；密钥与凭据仅存本地忽略目录）；CI `.github/workflows/ci.yml`（analyze/链接/三包单测/黄金回合）。验证：analyze 与链接检查通过，contracts 12 / engine 290（含新增开局失败清理 1 条）/ mobile 34 / golden 38 全过；iOS unsigned release 通过且 `PrivacyInfo.xcprivacy` 已入 Runner.app；profile 包在 `127.0.0.1:5555` 启动正常，aapt 显示 `application-label='远行'`。
   安全补强：Dart 网关在读 Key 前校验地址，远程仅 HTTPS、HTTP 精确本机例外、禁自动重定向，93 项专项测试通过；iOS 启动原生排除 Documents/Application Support 备份，失败阻断启动，Keychain 限本设备且禁同步。原生实际备份/迁移仍未实测。
-  未闭合：正式签名与开发者账号、品牌图标及商店素材/分级问卷/隐私清单逐项审核、物理双端安装运行、两端送审与审核结果。通用 iOS 模拟器构建存在本机多架构问题，无 iOS 运行验收；本地编译不等于可上架。
+  正式包（2026-11-02）：按用户决策生成新发布 keystore（`tool/release/keystore/wayfarer-release.jks`，`**/*.jks` 忽略；四个凭据在 `tool/release/release.env`，`600` 权限且 `tool/release/*.env` 忽略），版本升至 `1.0.0+1`；签名 AAB 58MB、通用 APK 63MB、分 ABI 20.6–24.0MB，jarsigner/apksigner 校验通过；在 `127.0.0.1:5565` 安装并走通隐私门→年龄门→书架。通用 APK 63MB 略超 §14 的 60MB 门槛，商店以 AAB 分发、按设备拆分后低于门槛。
+  未闭合：正式开发者账号、品牌图标最终视觉确认、iOS 签名/归档与原生截图、分级问卷/隐私清单逐项审核、物理双端安装运行、两端送审与审核结果；审核测试 Key（已决定由发布负责人提供，Key/额度未到位前不可送审；不实施离线演示模式）；发行主体/联系方式/隐私政策 URL。本地编译不等于可上架。
 - [~] **WF-LAUNCH-07 反馈与应急**
   产出：App 内反馈入口、商店支持渠道、高危内容处置说明
   验收：用户可在 3 步内提交反馈；处置流程有负责人
@@ -390,6 +392,7 @@ M3 遗留（验收证据已尽环境所能，以下为未覆盖项，复核时�
 
 | 日期 | 变更 |
 | --- | --- |
+| 2026-11-02 | **发布工程收口（品牌/隐私清单/商店材料/签名/CI）**：应用名与双端品牌图标、Android adaptive icon、启动底色；iOS `PrivacyInfo.xcprivacy` 入工程；`store/` 商店文案、Android 5 张与 App Store 6.9"/6.5" 各 5 张截图、隐私政策与用户协议草稿；Android 签名构建脚本与 GitHub Actions；按用户新决策生成本地发布 keystore（忽略入库），版本升至 `1.0.0+1`，签名 AAB/APK 校验通过并在模拟器走通首启流程；LAUNCH-05/06 部分更新，外部阻塞项与【待填写】字段保留 |
 | 2026-10-29 | **上线收尾与进度口径校正**：隐私版本同意门、冷启动全清（原子标记/失败阻断/旧 Key 清除）、导出告知、真实首字样本口径；Android 独立 QA 与 release 签名保护、iOS 15 工程/备份排除/本设备 Keychain、Dart 网关 HTTPS/精确本机 HTTP/禁止重定向。engine 289、contracts 12、mobile 34、golden 38 全过；QA 模拟器实测隐私/一回合/全清/外部原件保护，原日常包未触及。LAUNCH-05/06/07 保持部分完成，M0 性能/产品验证缺证项改部分完成；未替代法务、正式签名审核、物理双端及真实用户研究。详见测试与验收 §13.1 |
 | 2026-10-29 | **主玩法打磨 B 组（长局渲染 / 停止生成 / 书架空态）**：①B5 游玩页 `_NarrationList` 改 `ListView.builder`（只构建可见条目，流式 delta 不再逐帧重建整列表）；②B6 停止生成——生成中显示「停止生成」按钮，`cancel()` 订阅经 `StreamController.onCancel` 传播中止至引擎（分类/导演/旁白 delta/提取/commitTurn 前/随行问答 delta 六检查点，`_TurnAborted` 静默终止），**中止回合不落库、turnNo 不变、同一 expectedTurn 可重提不报 TURN_CONFLICT**，已发出请求用量行保留（已知取舍）；半截正文保留、纯空占位连同回合标题丢弃（真机首验发现残留空『……』+ 重提重复标题，已修）、恢复上回合待选选项；③B7 书架空态引导 `_EmptyShelf`（去工坊/导入世界包/下拉刷新）+「我的局」空态补「去书架」；单测 `turn_abort_test` 2 项 + `worlds_empty_test` 2 项、引擎 **193/193**、黄金回合全过、双包 analyze 清洁；真机（BlueStacks 真 Agnes API）验证首字等待期与流式中期两类中止 + 重提无冲突 + 长局滚动，证据 /tmp/wf_b/12–31；API参考 v1.3、测试与验收 v1.2（补七）同步 |
 | 2026-10-29 | **数据卫生与重试修复（引擎审计四项）**：①deleteRun 级联清理 run_events/run_snapshots/usage_log/events_fts（原只删局行致孤儿数据只增不减），library.delete 同口径补 usage_log，「我的局」新增单局删除按钮（原 deleteRun 无任何 UI 入口）；②usage_log 90 天滚动（Engine.open 自动 + purgeExpiredUsageLog）+ usageSummary 试玩排除下推 SQL（显式保留 NULL run_id 探活行）；③gateway 重试计时按单次尝试重置（修复第二次尝试被累计耗时误判首字超时）+ 429 Retry-After 真正用于退避；④listRuns 终局标题仅解析落幕局涉及版本（消除全表解码 N+1）。单测 data_hygiene_test 7 项、引擎 191/191、黄金回合全过、双包 analyze 清洁；真机（BlueStacks）删局前后诊断包表计数对比验证级联（usageLog 433→426）；API参考 v1.2、测试与验收 v1.1（补六）同步 |

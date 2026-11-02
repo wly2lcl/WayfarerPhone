@@ -477,43 +477,50 @@ class Engine {
       identityId: identityId,
       initialState: state,
     );
-    db.into(db.localEvents).insert(LocalEventsCompanion.insert(
-          name: 'run_created',
-          runId: Value(runId),
-          createdAt: DateTime.now().millisecondsSinceEpoch,
-        ));
-
-    // 序章：一次性生成
-    final prologue = await prologueFor(bible, identity, state, runId);
-
-    final choices = [
-      Choice(id: 't0c1', label: '先把眼前的事应付过去', intent: '应付眼前事务，观察环境', risk: Risk.low),
-      Choice(id: 't0c2', label: '找一个能打听消息的人', intent: '寻找信息源打听处境', risk: Risk.low),
-      Choice(id: 't0c3', label: '直接去查那件最要紧的事', intent: '直奔长期目标调查', risk: Risk.high),
-    ];
-
-    // 序章事件落库
-    final now = DateTime.now().millisecondsSinceEpoch;
-    await db.transaction(() async {
-      await db.into(db.runEvents).insert(RunEventsCompanion.insert(
-            runId: runId,
-            seq: 1,
-            turnNo: 0,
-            type: 'narration',
-            payload: jsonEncode({'text': prologue}),
-            createdAt: now,
+    try {
+      await db.into(db.localEvents).insert(LocalEventsCompanion.insert(
+            name: 'run_created',
+            runId: Value(runId),
+            createdAt: DateTime.now().millisecondsSinceEpoch,
           ));
-      await db.into(db.runEvents).insert(RunEventsCompanion.insert(
-            runId: runId,
-            seq: 2,
-            turnNo: 0,
-            type: 'choice',
-            payload: jsonEncode({'options': choices.map((c) => c.toJson()).toList()}),
-            createdAt: now,
-          ));
-    });
-    _drawTokens.remove(drawToken);
-    return StartResult(runId: runId, state: state, prologue: prologue, choices: choices);
+
+      // 序章：一次性生成
+      final prologue = await prologueFor(bible, identity, state, runId);
+
+      final choices = [
+        Choice(id: 't0c1', label: '先把眼前的事应付过去', intent: '应付眼前事务，观察环境', risk: Risk.low),
+        Choice(id: 't0c2', label: '找一个能打听消息的人', intent: '寻找信息源打听处境', risk: Risk.low),
+        Choice(id: 't0c3', label: '直接去查那件最要紧的事', intent: '直奔长期目标调查', risk: Risk.high),
+      ];
+
+      // 序章事件落库
+      final now = DateTime.now().millisecondsSinceEpoch;
+      await db.transaction(() async {
+        await db.into(db.runEvents).insert(RunEventsCompanion.insert(
+              runId: runId,
+              seq: 1,
+              turnNo: 0,
+              type: 'narration',
+              payload: jsonEncode({'text': prologue}),
+              createdAt: now,
+            ));
+        await db.into(db.runEvents).insert(RunEventsCompanion.insert(
+              runId: runId,
+              seq: 2,
+              turnNo: 0,
+              type: 'choice',
+              payload: jsonEncode({'options': choices.map((c) => c.toJson()).toList()}),
+              createdAt: now,
+            ));
+      });
+      _drawTokens.remove(drawToken);
+      return StartResult(runId: runId, state: state, prologue: prologue, choices: choices);
+    } catch (_) {
+      // 序章失败会留下 turn 0 空局；清理后重抛，保留 drawToken 供原身份重试
+      await deleteRun(runId);
+      await (db.delete(db.localEvents)..where((e) => e.runId.equals(runId))).go();
+      rethrow;
+    }
   }
 
   RunState initialStateFor(Identity identity, WorldBible bible) {
